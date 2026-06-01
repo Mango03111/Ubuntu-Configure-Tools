@@ -15,7 +15,7 @@
 - 支持设备识别测试 (`*idn?`)
 - 支持发送任意 SCPI 命令
 - 支持交互模式
-- 可配置波特率、结束符等参数
+- 可配置波特率、发送结束符、接收结束符等参数
 
 ## 配置参数
 
@@ -26,9 +26,10 @@
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `SERIAL_DEV` | `/dev/ttyUSB0` | 串口设备路径 |
-| `SERIAL_BAUD` | `9600` | 波特率 |
+| `SERIAL_BAUD` | `38400` | 波特率 |
 | `SERIAL_TIMEOUT` | `2` | 读取超时秒数 |
-| `SERIAL_LINE_END` | `CRLF` | 命令结束符 (CR/LF/CRLF) |
+| `SERIAL_LINE_END` | `CRLF` | 发送结束符 (CR/LF/CRLF) |
+| `SERIAL_RECEIVE_LINE_END` | `CR` | 接收结束符 (CR/LF/CRLF) |
 
 ### 串口设备路径
 
@@ -47,7 +48,7 @@
 > **注意**: Windows 下 COM 端口号 = `/dev/ttyS` 后的数字 + 1
 > 例如: COM3 = `/dev/ttyS2`, COM4 = `/dev/ttyS3`
 
-### 命令结束符
+### 发送/接收结束符
 
 支持三种行结束符模式：
 
@@ -56,6 +57,8 @@
 | `CR` | 回车符 `\r` | 某些老设备 |
 | `LF` | 换行符 `\n` | Unix/Linux 风格 |
 | `CRLF` | 回车+换行 `\r\n` | 默认，大多数设备 |
+
+当前脚本默认发送结束符为 `CRLF` (`\r\n`)，接收结束符为 `CR` (`\r`)。
 
 ## 使用方法
 
@@ -82,17 +85,17 @@
 SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh idn
 
 # 指定波特率
-SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=9600 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=38400 ./serial_optical_control.sh idn
 ```
 
 **Windows Git Bash/MSYS (COM3):**
 ```bash
-SERIAL_DEV=/dev/ttyS2 SERIAL_BAUD=9600 SERIAL_LINE_END=CRLF ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyS2 SERIAL_BAUD=38400 SERIAL_LINE_END=CRLF SERIAL_RECEIVE_LINE_END=CR ./serial_optical_control.sh idn
 ```
 
 **Windows Git Bash/MSYS (COM4):**
 ```bash
-SERIAL_DEV=/dev/ttyS3 SERIAL_BAUD=9600 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyS3 SERIAL_BAUD=38400 ./serial_optical_control.sh idn
 ```
 
 ### 3. 发送自定义 SCPI 命令
@@ -142,14 +145,19 @@ serial> exit
 
 ### 5. 指定参数运行
 
-**尝试不同波特率:**
+**指定默认波特率:**
 ```bash
-SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=115200 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=38400 ./serial_optical_control.sh idn
 ```
 
-**尝试不同结束符:**
+**尝试不同发送结束符:**
 ```bash
 SERIAL_DEV=/dev/ttyUSB0 SERIAL_LINE_END=CR ./serial_optical_control.sh idn
+```
+
+**尝试不同接收结束符:**
+```bash
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_RECEIVE_LINE_END=CR ./serial_optical_control.sh idn
 ```
 
 **增加超时时间:**
@@ -165,6 +173,10 @@ SERIAL_DEV=/dev/ttyUSB0 SERIAL_TIMEOUT=5 ./serial_optical_control.sh idn
 - **停止位**: 1
 - **校验位**: 无
 - **流控**: 禁用（软件流控和硬件流控均禁用）
+- **CTS / RTS**: 禁用
+- **DSR / DTR / RING / RLSD**: 禁用/忽略
+- **发送结束符**: `CRLF` (`\r\n`)
+- **接收结束符**: `CR` (`\r`)
 - **模式**: 原始模式（raw mode）
 
 ## 常见问题排查
@@ -220,14 +232,17 @@ sudo usermod -aG dialout $USER
 
 1. **检查波特率**: 确认设备波特率与脚本设置一致
    ```bash
-   SERIAL_BAUD=115200 ./serial_optical_control.sh idn
+   SERIAL_BAUD=38400 ./serial_optical_control.sh idn
    ```
 
-2. **尝试不同的行结束符**:
+2. **尝试不同的发送/接收结束符**:
    ```bash
    SERIAL_LINE_END=CR ./serial_optical_control.sh idn
    SERIAL_LINE_END=LF ./serial_optical_control.sh idn
    SERIAL_LINE_END=CRLF ./serial_optical_control.sh idn
+   SERIAL_RECEIVE_LINE_END=CR ./serial_optical_control.sh idn
+   SERIAL_RECEIVE_LINE_END=LF ./serial_optical_control.sh idn
+   SERIAL_RECEIVE_LINE_END=CRLF ./serial_optical_control.sh idn
    ```
 
 3. **检查串口线**: 确认 TX/RX 正确连接（交叉连接）
@@ -297,7 +312,7 @@ SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 ```bash
 # 设置环境变量
 export SERIAL_DEV=/dev/ttyUSB0
-export SERIAL_BAUD=9600
+export SERIAL_BAUD=38400
 
 # 建立连接 (端口1 -> 端口17)
 ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
@@ -341,7 +356,7 @@ serial> exit
 # 自动化配置脚本
 
 export SERIAL_DEV=/dev/ttyUSB0
-export SERIAL_BAUD=9600
+export SERIAL_BAUD=38400
 
 # 断开所有现有连接
 ./serial_optical_control.sh cmd ':oxc:swit:disc:all'
@@ -363,7 +378,7 @@ export SERIAL_BAUD=9600
 | 依赖工具 | `nc` (netcat) | `stty` (coreutils) |
 | 连接参数 | IP地址 + 端口 | 串口设备 + 波特率 |
 | 界面模式 | 交互式菜单 | 命令行 + 交互模式 |
-| 结束符 | 固定 `\r\n` | 可配置 (CR/LF/CRLF) |
+| 结束符 | 固定 `\r\n` | 发送/接收均可配置 (CR/LF/CRLF) |
 
 ## 文件说明
 
