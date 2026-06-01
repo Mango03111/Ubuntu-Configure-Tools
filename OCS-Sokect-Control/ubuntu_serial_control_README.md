@@ -65,13 +65,13 @@
 ### 1. 查看帮助
 
 ```bash
-./serial_optical_control.sh help
+bash ./serial_optical_control.sh help
 ```
 
 或：
 
 ```bash
-./serial_optical_control.sh --help
+bash ./serial_optical_control.sh --help
 ```
 
 ### 2. 测试设备识别 (发送 `*idn?`)
@@ -79,51 +79,51 @@
 **Linux/Ubuntu:**
 ```bash
 # 使用默认串口 /dev/ttyUSB0
-./serial_optical_control.sh idn
+bash ./serial_optical_control.sh idn
 
 # 指定串口设备
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh idn
 
 # 指定波特率
-SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=38400 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=38400 bash ./serial_optical_control.sh idn
 ```
 
 **Windows Git Bash/MSYS (COM3):**
 ```bash
-SERIAL_DEV=/dev/ttyS2 SERIAL_BAUD=38400 SERIAL_LINE_END=CRLF SERIAL_RECEIVE_LINE_END=CR ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyS2 SERIAL_BAUD=38400 SERIAL_LINE_END=CRLF SERIAL_RECEIVE_LINE_END=CR bash ./serial_optical_control.sh idn
 ```
 
 **Windows Git Bash/MSYS (COM4):**
 ```bash
-SERIAL_DEV=/dev/ttyS3 SERIAL_BAUD=38400 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyS3 SERIAL_BAUD=38400 bash ./serial_optical_control.sh idn
 ```
 
 ### 3. 发送自定义 SCPI 命令
 
 ```bash
 # 查询设备标识
-./serial_optical_control.sh cmd '*idn?'
+bash ./serial_optical_control.sh cmd '*idn?'
 
 # 查询端口规模
-./serial_optical_control.sh cmd ':oxc:swit:size?'
+bash ./serial_optical_control.sh cmd ':oxc:swit:size?'
 
 # 查询连接状态
-./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 
 # 建立连接 (端口1 -> 端口17)
-./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
 
 # 断开连接
-./serial_optical_control.sh cmd ':oxc:swit:conn:sub (@1),(@17)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:sub (@1),(@17)'
 
 # 断开所有连接
-./serial_optical_control.sh cmd ':oxc:swit:disc:all'
+bash ./serial_optical_control.sh cmd ':oxc:swit:disc:all'
 ```
 
 ### 4. 交互模式
 
 ```bash
-./serial_optical_control.sh interactive
+bash ./serial_optical_control.sh interactive
 ```
 
 进入交互模式后，可以逐行输入命令：
@@ -147,22 +147,22 @@ serial> exit
 
 **指定默认波特率:**
 ```bash
-SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=38400 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=38400 bash ./serial_optical_control.sh idn
 ```
 
 **尝试不同发送结束符:**
 ```bash
-SERIAL_DEV=/dev/ttyUSB0 SERIAL_LINE_END=CR ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_LINE_END=CR bash ./serial_optical_control.sh idn
 ```
 
 **尝试不同接收结束符:**
 ```bash
-SERIAL_DEV=/dev/ttyUSB0 SERIAL_RECEIVE_LINE_END=CR ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_RECEIVE_LINE_END=CR bash ./serial_optical_control.sh idn
 ```
 
 **增加超时时间:**
 ```bash
-SERIAL_DEV=/dev/ttyUSB0 SERIAL_TIMEOUT=5 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_TIMEOUT=5 bash ./serial_optical_control.sh idn
 ```
 
 ## 串口配置说明
@@ -232,17 +232,17 @@ sudo usermod -aG dialout $USER
 
 1. **检查波特率**: 确认设备波特率与脚本设置一致
    ```bash
-   SERIAL_BAUD=38400 ./serial_optical_control.sh idn
+   SERIAL_BAUD=38400 bash ./serial_optical_control.sh idn
    ```
 
 2. **尝试不同的发送/接收结束符**:
    ```bash
-   SERIAL_LINE_END=CR ./serial_optical_control.sh idn
-   SERIAL_LINE_END=LF ./serial_optical_control.sh idn
-   SERIAL_LINE_END=CRLF ./serial_optical_control.sh idn
-   SERIAL_RECEIVE_LINE_END=CR ./serial_optical_control.sh idn
-   SERIAL_RECEIVE_LINE_END=LF ./serial_optical_control.sh idn
-   SERIAL_RECEIVE_LINE_END=CRLF ./serial_optical_control.sh idn
+   SERIAL_LINE_END=CR bash ./serial_optical_control.sh idn
+   SERIAL_LINE_END=LF bash ./serial_optical_control.sh idn
+   SERIAL_LINE_END=CRLF bash ./serial_optical_control.sh idn
+   SERIAL_RECEIVE_LINE_END=CR bash ./serial_optical_control.sh idn
+   SERIAL_RECEIVE_LINE_END=LF bash ./serial_optical_control.sh idn
+   SERIAL_RECEIVE_LINE_END=CRLF bash ./serial_optical_control.sh idn
    ```
 
 3. **检查串口线**: 确认 TX/RX 正确连接（交叉连接）
@@ -251,7 +251,7 @@ sudo usermod -aG dialout $USER
 
 5. **增加超时时间**:
    ```bash
-   SERIAL_TIMEOUT=5 ./serial_optical_control.sh idn
+   SERIAL_TIMEOUT=5 bash ./serial_optical_control.sh idn
    ```
 
 ### 5. WSL 中使用串口
@@ -282,7 +282,7 @@ ls /dev/ttyUSB*
 sudo chmod 666 /dev/ttyUSB0
 
 # 使用脚本
-./serial_optical_control.sh idn
+bash ./serial_optical_control.sh idn
 ```
 
 ## 示例场景
@@ -291,20 +291,20 @@ sudo chmod 666 /dev/ttyUSB0
 
 ```bash
 # 测试设备是否响应
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh idn
 ```
 
 ### 场景2: 查询设备信息
 
 ```bash
 # 查询设备标识
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh cmd '*idn?'
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh cmd '*idn?'
 
 # 查询端口规模
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh cmd ':oxc:swit:size?'
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh cmd ':oxc:swit:size?'
 
 # 查询连接状态
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 ```
 
 ### 场景3: 建立光路连接
@@ -315,20 +315,20 @@ export SERIAL_DEV=/dev/ttyUSB0
 export SERIAL_BAUD=38400
 
 # 建立连接 (端口1 -> 端口17)
-./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
 
 # 查询连接状态
-./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 
 # 断开连接
-./serial_optical_control.sh cmd ':oxc:swit:conn:sub (@1),(@17)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:sub (@1),(@17)'
 ```
 
 ### 场景4: 交互模式操作
 
 ```bash
 # 启动交互模式
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh interactive
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh interactive
 
 # 在交互模式中输入命令
 serial> *idn?
@@ -359,15 +359,15 @@ export SERIAL_DEV=/dev/ttyUSB0
 export SERIAL_BAUD=38400
 
 # 断开所有现有连接
-./serial_optical_control.sh cmd ':oxc:swit:disc:all'
+bash ./serial_optical_control.sh cmd ':oxc:swit:disc:all'
 
 # 建立新连接
-./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
-./serial_optical_control.sh cmd ':oxc:swit:conn:add (@2),(@18)'
-./serial_optical_control.sh cmd ':oxc:swit:conn:add (@3),(@19)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@2),(@18)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@3),(@19)'
 
 # 验证连接
-./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 ```
 
 ## 与网口版本的区别

@@ -285,13 +285,15 @@ test_idn() {
 # 显示帮助信息
 #######################################
 show_help() {
+    local script_cmd="bash ./serial_optical_control.sh"
+
     echo ""
     echo -e "${CYAN}========================================${NC}"
     echo -e "${CYAN}    串口光交换机控制脚本使用说明${NC}"
     echo -e "${CYAN}========================================${NC}"
     echo ""
     echo "用法:"
-    echo "  $0 <命令> [参数]"
+    echo "  $script_cmd <命令> [参数]"
     echo ""
     echo -e "${YELLOW}命令列表:${NC}"
     echo "  help, --help     显示此帮助信息"
@@ -311,31 +313,31 @@ show_help() {
     echo ""
     echo -e "${GREEN}# Linux/Ubuntu 环境示例:${NC}"
     echo "  # 使用默认设置"
-    echo "  $0 idn"
+    echo "  $script_cmd idn"
     echo ""
     echo "  # 指定串口设备"
-    echo "  SERIAL_DEV=/dev/ttyUSB0 $0 idn"
+    echo "  SERIAL_DEV=/dev/ttyUSB0 $script_cmd idn"
     echo ""
     echo "  # 指定波特率"
-    echo "  SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=38400 $0 idn"
+    echo "  SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=38400 $script_cmd idn"
     echo ""
     echo "  # 指定发送结束符"
-    echo "  SERIAL_DEV=/dev/ttyUSB0 SERIAL_LINE_END=CR $0 idn"
+    echo "  SERIAL_DEV=/dev/ttyUSB0 SERIAL_LINE_END=CR $script_cmd idn"
     echo ""
     echo "  # 指定接收结束符"
-    echo "  SERIAL_DEV=/dev/ttyUSB0 SERIAL_RECEIVE_LINE_END=CR $0 idn"
+    echo "  SERIAL_DEV=/dev/ttyUSB0 SERIAL_RECEIVE_LINE_END=CR $script_cmd idn"
     echo ""
     echo -e "${GREEN}# Windows Git Bash/MSYS 环境示例:${NC}"
     echo "  # COM3 通常映射为 /dev/ttyS2"
-    echo "  SERIAL_DEV=/dev/ttyS2 SERIAL_BAUD=38400 SERIAL_LINE_END=CRLF SERIAL_RECEIVE_LINE_END=CR $0 idn"
+    echo "  SERIAL_DEV=/dev/ttyS2 SERIAL_BAUD=38400 SERIAL_LINE_END=CRLF SERIAL_RECEIVE_LINE_END=CR $script_cmd idn"
     echo ""
     echo -e "${GREEN}# 发送自定义命令:${NC}"
-    echo "  $0 cmd '*idn?'"
-    echo "  $0 cmd ':oxc:swit:size?'"
-    echo "  $0 cmd ':oxc:swit:conn:stat?'"
+    echo "  $script_cmd cmd '*idn?'"
+    echo "  $script_cmd cmd ':oxc:swit:size?'"
+    echo "  $script_cmd cmd ':oxc:swit:conn:stat?'"
     echo ""
     echo -e "${GREEN}# 交互模式:${NC}"
-    echo "  $0 interactive"
+    echo "  $script_cmd interactive"
     echo "  进入后可逐行输入命令，输入 exit/quit/q 退出"
     echo ""
     echo -e "${YELLOW}常见问题排查:${NC}"
@@ -417,8 +419,8 @@ main() {
         cmd)
             if [[ $# -lt 1 ]]; then
                 log_error "请提供要发送的命令"
-                echo "用法: $0 cmd <命令>"
-                echo "示例: $0 cmd '*idn?'"
+                echo "用法: bash ./serial_optical_control.sh cmd <命令>"
+                echo "示例: bash ./serial_optical_control.sh cmd '*idn?'"
                 exit 1
             fi
             serial_init
@@ -438,7 +440,7 @@ main() {
             log_error "未知命令: $command"
             echo ""
             echo "可用命令: help, idn, cmd, interactive"
-            echo "运行 '$0 help' 查看详细帮助"
+            echo "运行 'bash ./serial_optical_control.sh help' 查看详细帮助"
             exit 1
             ;;
     esac
