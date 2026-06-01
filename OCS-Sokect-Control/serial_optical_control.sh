@@ -9,9 +9,10 @@ set -u  # 严格模式，不使用 -e 以避免读超时导致退出
 # 全局配置变量（可通过环境变量覆盖）
 #######################################
 SERIAL_DEV="${SERIAL_DEV:-/dev/ttyUSB0}"
-SERIAL_BAUD="${SERIAL_BAUD:-9600}"
+SERIAL_BAUD="${SERIAL_BAUD:-38400}"
 SERIAL_TIMEOUT="${SERIAL_TIMEOUT:-2}"
 SERIAL_LINE_END="${SERIAL_LINE_END:-CRLF}"
+SERIAL_RECEIVE_LINE_END="${SERIAL_RECEIVE_LINE_END:-CR}"
 
 # 串口文件描述符
 SERIAL_FD=""
@@ -59,6 +60,22 @@ get_line_end() {
 }
 
 #######################################
+# 按配置清理接收行尾
+#######################################
+strip_receive_line_end() {
+    local line="$1"
+
+    case "$SERIAL_RECEIVE_LINE_END" in
+        CR)   line="${line%$'\r'}" ;;
+        LF)   line="${line%$'\n'}" ;;
+        CRLF) line="${line%$'\n'}"; line="${line%$'\r'}" ;;
+        *)    line="${line%$'\r'}" ;;
+    esac
+
+    printf "%s" "$line"
+}
+
+#######################################
 # 串口初始化
 # 检查环境并打开串口
 #######################################
@@ -100,7 +117,8 @@ serial_init() {
     fi
 
     log_info "正在初始化串口: $SERIAL_DEV"
-    log_info "波特率: $SERIAL_BAUD, 结束符: $SERIAL_LINE_END"
+    log_info "波特率: $SERIAL_BAUD, 数据位: 8, 校验: none, 停止位: 1"
+    log_info "流控: none, 发送结束符: $SERIAL_LINE_END, 接收结束符: $SERIAL_RECEIVE_LINE_END"
 
     # 使用 stty 配置串口参数
     # 参数说明:
@@ -109,12 +127,14 @@ serial_init() {
     #   -parenb   - 无校验
     #   -ixon     - 禁用软件流控(XOFF)
     #   -ixoff    - 禁用软件流控(XON)
-    #   -crtscts  - 禁用硬件流控
+    #   -crtscts  - 禁用硬件流控(CTS/RTS)
+    #   clocal    - 忽略调制解调器控制线(DSR/DTR/RING/RLSD)
+    #   -hupcl    - 关闭时不拉低DTR
     #   raw       - 原始模式
     #   -echo     - 禁用回显
     #   min 0     - 非阻塞读取
     #   time 10   - 读取超时(1秒，单位0.1秒)
-    if ! stty -F "$SERIAL_DEV" "$SERIAL_BAUD" cs8 -cstopb -parenb -ixon -ixoff -crtscts raw -echo min 0 time 10 2>/dev/null; then
+    if ! stty -F "$SERIAL_DEV" "$SERIAL_BAUD" cs8 -cstopb -parenb -ixon -ixoff -crtscts clocal -hupcl raw -echo min 0 time 10 2>/dev/null; then
         log_error "stty 配置串口失败: $SERIAL_DEV"
         echo "可能的原因:"
         echo "  1. 串口设备被其他程序占用"
@@ -191,8 +211,8 @@ serial_query() {
     # 读取响应直到超时
     # 使用 while 循环读取多行响应
     while IFS= read -r -t "$SERIAL_TIMEOUT" line <&3 2>/dev/null; do
-        # 去除回车符
-        line="${line%$'\r'}"
+        # 按接收结束符配置清理行尾
+        line="$(strip_receive_line_end "$line")"
         if [[ -n "$line" ]]; then
             response+="$line"$'\n'
         fi
@@ -203,11 +223,12 @@ serial_query() {
         log_warn "未收到响应"
         echo "可能的原因:" >&2
         echo "  1. 波特率不正确 (当前: $SERIAL_BAUD)" >&2
-        echo "  2. 结束符不正确 (当前: $SERIAL_LINE_END)" >&2
-        echo "  3. 串口设备路径错误 (当前: $SERIAL_DEV)" >&2
-        echo "  4. 流控问题" >&2
-        echo "  5. 串口线缆问题" >&2
-        echo "  6. 设备未上电或未就绪" >&2
+        echo "  2. 发送结束符不正确 (当前: $SERIAL_LINE_END)" >&2
+        echo "  3. 接收结束符不正确 (当前: $SERIAL_RECEIVE_LINE_END)" >&2
+        echo "  4. 串口设备路径错误 (当前: $SERIAL_DEV)" >&2
+        echo "  5. 流控问题" >&2
+        echo "  6. 串口线缆问题" >&2
+        echo "  7. 设备未上电或未就绪" >&2
         return 1
     fi
 
@@ -280,9 +301,10 @@ show_help() {
     echo ""
     echo -e "${YELLOW}环境变量:${NC}"
     echo "  SERIAL_DEV       串口设备路径 (默认: /dev/ttyUSB0)"
-    echo "  SERIAL_BAUD       波特率 (默认: 9600)"
+    echo "  SERIAL_BAUD       波特率 (默认: 38400)"
     echo "  SERIAL_TIMEOUT    读取超时秒数 (默认: 2)"
-    echo "  SERIAL_LINE_END   命令结束符 (默认: CRLF)"
+    echo "  SERIAL_LINE_END   发送结束符 (默认: CRLF)"
+    echo "  SERIAL_RECEIVE_LINE_END 接收结束符 (默认: CR)"
     echo "                   可选值: CR, LF, CRLF"
     echo ""
     echo -e "${YELLOW}运行示例:${NC}"
@@ -295,14 +317,17 @@ show_help() {
     echo "  SERIAL_DEV=/dev/ttyUSB0 $0 idn"
     echo ""
     echo "  # 指定波特率"
-    echo "  SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=115200 $0 idn"
+    echo "  SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=38400 $0 idn"
     echo ""
-    echo "  # 指定结束符"
+    echo "  # 指定发送结束符"
     echo "  SERIAL_DEV=/dev/ttyUSB0 SERIAL_LINE_END=CR $0 idn"
+    echo ""
+    echo "  # 指定接收结束符"
+    echo "  SERIAL_DEV=/dev/ttyUSB0 SERIAL_RECEIVE_LINE_END=CR $0 idn"
     echo ""
     echo -e "${GREEN}# Windows Git Bash/MSYS 环境示例:${NC}"
     echo "  # COM3 通常映射为 /dev/ttyS2"
-    echo "  SERIAL_DEV=/dev/ttyS2 SERIAL_BAUD=9600 SERIAL_LINE_END=CRLF $0 idn"
+    echo "  SERIAL_DEV=/dev/ttyS2 SERIAL_BAUD=38400 SERIAL_LINE_END=CRLF SERIAL_RECEIVE_LINE_END=CR $0 idn"
     echo ""
     echo -e "${GREEN}# 发送自定义命令:${NC}"
     echo "  $0 cmd '*idn?'"
@@ -317,7 +342,7 @@ show_help() {
     echo "  1. 无响应时检查:"
     echo "     - 串口设备路径是否正确"
     echo "     - 波特率是否匹配设备设置"
-    echo "     - 结束符是否正确 (CR/LF/CRLF)"
+    echo "     - 发送/接收结束符是否正确 (CR/LF/CRLF)"
     echo "     - 是否有读写权限"
     echo ""
     echo "  2. Linux/Ubuntu 权限问题:"
@@ -338,7 +363,8 @@ interactive_mode() {
     echo -e "${CYAN}========== 交互模式 ==========${NC}"
     echo "输入 SCPI 命令，脚本将通过串口发送并显示响应。"
     echo "输入 exit、quit 或 q 退出交互模式。"
-    echo "命令将自动追加结束符: $SERIAL_LINE_END"
+    echo "命令将自动追加发送结束符: $SERIAL_LINE_END"
+    echo "响应将按接收结束符清理行尾: $SERIAL_RECEIVE_LINE_END"
     echo ""
     
     local cmd
