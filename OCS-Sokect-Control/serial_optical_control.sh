@@ -282,6 +282,374 @@ test_idn() {
 }
 
 #######################################
+# 验证端口号
+#######################################
+validate_port() {
+    local port="$1"
+    if [[ "$port" =~ ^[0-9]+$ ]] && (( port >= 1 && port <= 32 )); then
+        return 0
+    fi
+    return 1
+}
+
+#######################################
+# 解析批量输入格式: input1,output1;input2,output2
+#######################################
+parse_batch_input() {
+    local input="$1"
+    local pair input_port output_port extra
+    local -a pairs
+
+    [[ -z "$input" ]] && return 1
+
+    IFS=';' read -r -a pairs <<< "$input"
+
+    for pair in "${pairs[@]}"; do
+        [[ -z "$pair" ]] && continue
+
+        IFS=',' read -r input_port output_port extra <<< "$pair"
+
+        if [[ -n "${extra:-}" ]] || ! validate_port "$input_port" || ! validate_port "$output_port"; then
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+#######################################
+# 构造官方支持的批量建立连接命令
+#######################################
+build_batch_add_command() {
+    local input_str="$1"
+    local inputs=""
+    local outputs=""
+    local pair input_port output_port
+    local -a pairs
+
+    IFS=';' read -r -a pairs <<< "$input_str"
+
+    for pair in "${pairs[@]}"; do
+        [[ -z "$pair" ]] && continue
+
+        IFS=',' read -r input_port output_port <<< "$pair"
+
+        if [[ -z "$inputs" ]]; then
+            inputs="$input_port"
+            outputs="$output_port"
+        else
+            inputs="$inputs,$input_port"
+            outputs="$outputs,$output_port"
+        fi
+    done
+
+    printf ":oxc:swit:conn:add (@%s),(@%s)" "$inputs" "$outputs"
+}
+
+#######################################
+# 查询并显示串口响应
+#######################################
+serial_print_query() {
+    local cmd="$1"
+    local label="$2"
+    local response
+
+    response=$(serial_query "$cmd")
+    local status=$?
+
+    if [[ $status -eq 0 && -n "$response" ]]; then
+        echo "$label: $response"
+        return 0
+    fi
+
+    log_error "查询失败: $cmd"
+    return 1
+}
+
+serial_query_device() {
+    echo
+    log_info "=== 设备信息 ==="
+    serial_print_query "*IDN?" "设备ID"
+    if ! serial_print_query "*STB?" "设备状态"; then
+        log_warn "设备状态查询失败，继续返回菜单"
+    fi
+}
+
+serial_query_switch_size() {
+    echo
+    log_info "=== 光开关端口信息 ==="
+    serial_print_query ":oxc:swit:size?" "端口规模"
+}
+
+serial_query_connections() {
+    echo
+    log_info "=== 当前连接状态 ==="
+
+    local response
+    response=$(serial_query ":oxc:swit:conn:stat?")
+    local status=$?
+
+    if [[ $status -eq 0 && -n "$response" && "$response" != "<none>" ]]; then
+        echo "当前连接:"
+        echo "$response"
+    elif [[ $status -eq 0 ]]; then
+        log_info "当前没有活动连接"
+    else
+        log_warn "未收到连接状态响应，可能当前没有活动连接或设备不返回空连接状态"
+    fi
+}
+
+serial_add_link() {
+    local input="$1"
+    local output="$2"
+    local cmd=":oxc:swit:conn:add (@$input),(@$output)"
+
+    echo
+    log_info "建立连接: 端口$input -> 端口$output"
+    serial_send "$cmd"
+}
+
+serial_remove_link() {
+    local input="$1"
+    local output="$2"
+    local cmd=":oxc:swit:conn:sub (@$input),(@$output)"
+
+    echo
+    log_info "断开连接: 端口$input -> 端口$output"
+    serial_send "$cmd"
+}
+
+serial_create_single_connection() {
+    echo
+    log_info "=== 建立光路连接 ==="
+    echo "输入格式: 输入端口号,输出端口号"
+    echo "示例: 1,17"
+
+    local input_str input_port output_port
+    while true; do
+        echo -n "请输入连接参数 (或输入 q 退回菜单): "
+        read -r input_str
+
+        if [[ "$input_str" == "q" || "$input_str" == "Q" ]]; then
+            log_info "退回主菜单..."
+            return
+        fi
+
+        if [[ "$input_str" =~ ^[0-9]+,[0-9]+$ ]]; then
+            IFS=',' read -r input_port output_port <<< "$input_str"
+            if validate_port "$input_port" && validate_port "$output_port"; then
+                serial_add_link "$input_port" "$output_port"
+                return
+            fi
+            log_error "端口号超出范围! 请输入1-32之间的端口号"
+        else
+            log_error "格式错误! 请输入格式: 输入端口,输出端口 (例如: 1,17)"
+        fi
+    done
+}
+
+serial_remove_single_connection() {
+    echo
+    log_info "=== 断开光路连接 ==="
+    echo "输入格式: 输入端口号,输出端口号"
+    echo "示例: 1,17"
+
+    local input_str input_port output_port
+    while true; do
+        echo -n "请输入断开参数 (或输入 q 退回菜单): "
+        read -r input_str
+
+        if [[ "$input_str" == "q" || "$input_str" == "Q" ]]; then
+            log_info "退回主菜单..."
+            return
+        fi
+
+        if [[ "$input_str" =~ ^[0-9]+,[0-9]+$ ]]; then
+            IFS=',' read -r input_port output_port <<< "$input_str"
+            if validate_port "$input_port" && validate_port "$output_port"; then
+                serial_remove_link "$input_port" "$output_port"
+                return
+            fi
+            log_error "端口号超出范围! 请输入1-32之间的端口号"
+        else
+            log_error "格式错误! 请输入格式: 输入端口,输出端口 (例如: 1,17)"
+        fi
+    done
+}
+
+serial_add_multiple_links() {
+    echo
+    log_info "=== 批量建立连接 ==="
+    echo "输入格式: input1,output1;input2,output2;..."
+    echo "示例: 1,17;2,18;3,19"
+    echo "说明: 将合并为一条官方批量建立命令发送"
+
+    local input_str cmd
+    while true; do
+        echo -n "请输入批量连接参数 (或输入 q 退回菜单): "
+        read -r input_str
+
+        if [[ "$input_str" == "q" || "$input_str" == "Q" ]]; then
+            log_info "退回主菜单..."
+            return
+        fi
+
+        if parse_batch_input "$input_str"; then
+            break
+        fi
+
+        log_error "格式错误! 请重新输入"
+    done
+
+    cmd=$(build_batch_add_command "$input_str")
+    log_info "发送批量建立命令: $cmd"
+    serial_send "$cmd"
+}
+
+serial_remove_multiple_links() {
+    echo
+    log_info "=== 批量断开连接 ==="
+    echo "输入格式: input1,output1;input2,output2;..."
+    echo "示例: 1,17;2,18;3,19"
+    echo "说明: 官方文档未说明批量断开格式，将逐条发送断开命令"
+
+    local input_str pair input_port output_port success_count=0 total_count=0
+    local -a pairs
+    while true; do
+        echo -n "请输入批量断开参数 (或输入 q 退回菜单): "
+        read -r input_str
+
+        if [[ "$input_str" == "q" || "$input_str" == "Q" ]]; then
+            log_info "退回主菜单..."
+            return
+        fi
+
+        if parse_batch_input "$input_str"; then
+            break
+        fi
+
+        log_error "格式错误! 请重新输入"
+    done
+
+    IFS=';' read -r -a pairs <<< "$input_str"
+    for pair in "${pairs[@]}"; do
+        [[ -z "$pair" ]] && continue
+
+        IFS=',' read -r input_port output_port <<< "$pair"
+        ((total_count++))
+
+        if serial_remove_link "$input_port" "$output_port"; then
+            ((success_count++))
+        fi
+    done
+
+    echo
+    log_info "批量断开完成: 成功 $success_count/$total_count"
+}
+
+serial_disconnect_all_links() {
+    echo
+    log_info "=== 断开所有连接 ==="
+    serial_send ":oxc:swit:disc:all"
+}
+
+serial_custom_scpi_command() {
+    echo
+    log_info "=== 自定义SCPI命令 ==="
+
+    local command response
+    echo -n "输入SCPI命令 (或输入 q 退回菜单): "
+    read -r command
+
+    if [[ "$command" == "q" || "$command" == "Q" ]]; then
+        log_info "退回主菜单..."
+        return
+    fi
+
+    response=$(serial_query "$command")
+    if [[ $? -eq 0 && -n "$response" ]]; then
+        echo "响应: $response"
+    fi
+}
+
+serial_test_connection_function() {
+    echo
+    log_info "=== 测试连接功能 ==="
+    echo "该测试会建立并断开端口 1 -> 17 的连接。"
+    echo -n "是否继续? (y/N): "
+
+    local confirm
+    read -r confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        log_info "已取消测试"
+        return
+    fi
+
+    serial_add_link 1 17
+    serial_query_connections
+    serial_remove_link 1 17
+    serial_query_connections
+    log_info "连接功能测试完成"
+}
+
+serial_show_menu() {
+    echo
+    echo "=== 串口光交换机控制菜单 ==="
+    echo "1. 查询设备信息"
+    echo "2. 查询光开关端口规模"
+    echo "3. 建立光路连接"
+    echo "4. 断开光路连接"
+    echo "5. 批量建立连接"
+    echo "6. 批量断开连接"
+    echo "7. 查询所有连接"
+    echo "8. 断开所有连接"
+    echo "9. 自定义SCPI命令"
+    echo "10. 测试连接功能"
+    echo "11. 原始命令行模式"
+    echo "0. 退出"
+    echo -n "请选择: "
+}
+
+serial_run_controller() {
+    local choice
+    while true; do
+        serial_show_menu
+        if ! read -r choice; then
+            echo
+            log_info "输入结束，退出交互模式"
+            break
+        fi
+
+        case "$choice" in
+            1) serial_query_device ;;
+            2) serial_query_switch_size ;;
+            3) serial_create_single_connection ;;
+            4) serial_remove_single_connection ;;
+            5) serial_add_multiple_links ;;
+            6) serial_remove_multiple_links ;;
+            7) serial_query_connections ;;
+            8) serial_disconnect_all_links ;;
+            9) serial_custom_scpi_command ;;
+            10) serial_test_connection_function ;;
+            11)
+                serial_raw_command_mode
+                continue
+                ;;
+            0)
+                log_info "退出交互模式"
+                break
+                ;;
+            *)
+                log_error "无效选择，请输入0-11的数字"
+                ;;
+        esac
+
+        echo -n "按回车键继续..."
+        read -r
+    done
+}
+
+#######################################
 # 显示帮助信息
 #######################################
 show_help() {
@@ -299,7 +667,8 @@ show_help() {
     echo "  help, --help     显示此帮助信息"
     echo "  idn              测试设备识别，发送 *idn? 命令"
     echo "  cmd <命令>       发送任意 SCPI 命令"
-    echo "  interactive      进入交互模式"
+    echo "  interactive      进入菜单式交互模式"
+    echo "  raw              进入原始 SCPI 命令行模式"
     echo ""
     echo -e "${YELLOW}环境变量:${NC}"
     echo "  SERIAL_DEV       串口设备路径 (默认: /dev/ttyUSB0)"
@@ -338,6 +707,10 @@ show_help() {
     echo ""
     echo -e "${GREEN}# 交互模式:${NC}"
     echo "  $script_cmd interactive"
+    echo "  进入后可通过菜单查询设备、管理连接或进入原始命令行模式"
+    echo ""
+    echo -e "${GREEN}# 原始命令行模式:${NC}"
+    echo "  $script_cmd raw"
     echo "  进入后可逐行输入命令，输入 exit/quit/q 退出"
     echo ""
     echo -e "${YELLOW}常见问题排查:${NC}"
@@ -360,11 +733,11 @@ show_help() {
 #######################################
 # 交互模式
 #######################################
-interactive_mode() {
+serial_raw_command_mode() {
     echo ""
-    echo -e "${CYAN}========== 交互模式 ==========${NC}"
+    echo -e "${CYAN}========== 原始命令行模式 ==========${NC}"
     echo "输入 SCPI 命令，脚本将通过串口发送并显示响应。"
-    echo "输入 exit、quit 或 q 退出交互模式。"
+    echo "输入 exit、quit 或 q 退出原始命令行模式。"
     echo "命令将自动追加发送结束符: $SERIAL_LINE_END"
     echo "响应将按接收结束符清理行尾: $SERIAL_RECEIVE_LINE_END"
     echo ""
@@ -377,7 +750,7 @@ interactive_mode() {
         # 检查退出命令
         case "$cmd" in
             exit|quit|q|Q)
-                log_info "退出交互模式"
+                log_info "退出原始命令行模式"
                 break
                 ;;
         esac
@@ -398,6 +771,10 @@ interactive_mode() {
         fi
         echo ""
     done
+}
+
+interactive_mode() {
+    serial_run_controller
 }
 
 #######################################
@@ -436,10 +813,14 @@ main() {
             serial_init
             interactive_mode
             ;;
+        raw)
+            serial_init
+            serial_raw_command_mode
+            ;;
         *)
             log_error "未知命令: $command"
             echo ""
-            echo "可用命令: help, idn, cmd, interactive"
+            echo "可用命令: help, idn, cmd, interactive, raw"
             echo "运行 'bash ./serial_optical_control.sh help' 查看详细帮助"
             exit 1
             ;;

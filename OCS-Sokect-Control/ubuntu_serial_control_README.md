@@ -14,7 +14,8 @@
 - 通过串口发送 SCPI 命令
 - 支持设备识别测试 (`*idn?`)
 - 支持发送任意 SCPI 命令
-- 支持交互模式
+- 支持菜单式交互模式和原始 SCPI 命令行模式
+- 支持单连接、批量建立连接、逐条批量断开连接
 - 可配置波特率、发送结束符、接收结束符等参数
 
 ## 配置参数
@@ -120,15 +121,57 @@ bash ./serial_optical_control.sh cmd ':oxc:swit:conn:sub (@1),(@17)'
 bash ./serial_optical_control.sh cmd ':oxc:swit:disc:all'
 ```
 
-### 4. 交互模式
+### 4. 菜单式交互模式
 
 ```bash
 bash ./serial_optical_control.sh interactive
 ```
 
-进入交互模式后，可以逐行输入命令：
+进入交互模式后，会显示菜单：
 
 ```
+=== 串口光交换机控制菜单 ===
+1. 查询设备信息
+2. 查询光开关端口规模
+3. 建立光路连接
+4. 断开光路连接
+5. 批量建立连接
+6. 批量断开连接
+7. 查询所有连接
+8. 断开所有连接
+9. 自定义SCPI命令
+10. 测试连接功能
+11. 原始命令行模式
+0. 退出
+```
+
+批量建立连接使用官方批量命令，一次发送：
+
+```text
+输入: 1,17;2,18;3,19
+发送: :oxc:swit:conn:add (@1,2,3),(@17,18,19)
+```
+
+批量断开连接保留逐条断开方式：
+
+```text
+输入: 1,17;2,18;3,19
+发送: :oxc:swit:conn:sub (@1),(@17)
+发送: :oxc:swit:conn:sub (@2),(@18)
+发送: :oxc:swit:conn:sub (@3),(@19)
+```
+
+菜单中的 `11. 原始命令行模式` 可进入逐行 SCPI 命令模式。
+
+### 5. 原始命令行模式
+
+```bash
+bash ./serial_optical_control.sh raw
+```
+
+进入原始命令行模式后，可以逐行输入命令：
+
+```text
 serial> *idn?
 Polatis,Model-32x32,S/N-12345,1.0
 
@@ -141,9 +184,9 @@ serial> :oxc:swit:conn:stat?
 serial> exit
 ```
 
-输入 `exit`、`quit` 或 `q` 退出交互模式。
+输入 `exit`、`quit` 或 `q` 退出原始命令行模式。
 
-### 5. 指定参数运行
+### 6. 指定参数运行
 
 **指定默认波特率:**
 ```bash
@@ -324,13 +367,22 @@ bash ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 bash ./serial_optical_control.sh cmd ':oxc:swit:conn:sub (@1),(@17)'
 ```
 
-### 场景4: 交互模式操作
+### 场景4: 菜单式交互模式操作
 
 ```bash
-# 启动交互模式
+# 启动菜单式交互模式
 SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh interactive
 
-# 在交互模式中输入命令
+# 在菜单中选择功能编号，例如 1 查询设备信息、5 批量建立连接、11 进入原始命令行模式
+```
+
+### 场景5: 原始命令行模式操作
+
+```bash
+# 启动原始命令行模式
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh raw
+
+# 在原始命令行模式中输入命令
 serial> *idn?
 Polatis,Model-32x32,S/N-12345,1.0
 
@@ -349,7 +401,7 @@ serial> :oxc:swit:conn:sub (@1),(@17)
 serial> exit
 ```
 
-### 场景5: 自动化脚本
+### 场景6: 自动化脚本
 
 ```bash
 #!/bin/bash
@@ -377,7 +429,7 @@ bash ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 | 通信方式 | TCP Socket (IP + Port 5025) | 串口 (Serial Port) |
 | 依赖工具 | `nc` (netcat) | `stty` (coreutils) |
 | 连接参数 | IP地址 + 端口 | 串口设备 + 波特率 |
-| 界面模式 | 交互式菜单 | 命令行 + 交互模式 |
+| 界面模式 | 交互式菜单 | 命令行 + 菜单式交互模式 + 原始命令行模式 |
 | 结束符 | 固定 `\r\n` | 发送/接收均可配置 (CR/LF/CRLF) |
 
 ## 文件说明
