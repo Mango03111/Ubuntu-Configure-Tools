@@ -89,20 +89,29 @@ serial_init() {
         exit 1
     fi
 
+    # 默认串口不存在时自动尝试备用 USB 串口
+    if [[ ! -e "$SERIAL_DEV" && "$SERIAL_DEV" == "/dev/ttyUSB0" ]]; then
+        if [[ -e "/dev/ttyUSB1" ]]; then
+            log_warn "串口设备不存在: /dev/ttyUSB0，自动切换到 /dev/ttyUSB1"
+            SERIAL_DEV="/dev/ttyUSB1"
+        fi
+    fi
+
     # 检查串口设备是否存在
     if [[ ! -e "$SERIAL_DEV" ]]; then
         log_error "串口设备不存在: $SERIAL_DEV"
         echo ""
         echo "排查建议:"
         echo "  1. 检查设备是否已连接"
-        echo "  2. Linux/Ubuntu: 运行 'ls /dev/ttyUSB* /dev/ttyACM*' 查看可用串口"
-        echo "  3. Windows Git Bash/MSYS: COM口映射规则如下"
+        echo "  2. Linux/Ubuntu: 默认会依次尝试 /dev/ttyUSB0 和 /dev/ttyUSB1"
+        echo "  3. Linux/Ubuntu: 运行 'ls /dev/ttyUSB* /dev/ttyACM*' 查看可用串口"
+        echo "  4. Windows Git Bash/MSYS: COM口映射规则如下"
         echo "     COM1 -> /dev/ttyS0"
         echo "     COM2 -> /dev/ttyS1"
         echo "     COM3 -> /dev/ttyS2"
         echo "     以此类推"
-        echo "  4. WSL: 可能需要运行 'sudo chmod 666 $SERIAL_DEV' 获取权限"
-        echo "  5. 可以通过环境变量指定: SERIAL_DEV=/dev/your_device"
+        echo "  5. WSL: 可能需要运行 'sudo chmod 666 $SERIAL_DEV' 获取权限"
+        echo "  6. 可以通过环境变量指定: SERIAL_DEV=/dev/your_device"
         exit 1
     fi
 

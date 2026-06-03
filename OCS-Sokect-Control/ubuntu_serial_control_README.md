@@ -26,7 +26,7 @@
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `SERIAL_DEV` | `/dev/ttyUSB0` | 串口设备路径 |
+| `SERIAL_DEV` | `/dev/ttyUSB0` | 串口设备路径，默认不存在时自动尝试 `/dev/ttyUSB1` |
 | `SERIAL_BAUD` | `38400` | 波特率 |
 | `SERIAL_TIMEOUT` | `2` | 读取超时秒数 |
 | `SERIAL_LINE_END` | `CRLF` | 发送结束符 (CR/LF/CRLF) |
@@ -39,6 +39,7 @@
 | 系统 | 串口设备示例 | 说明 |
 |------|-------------|------|
 | **Linux/Ubuntu** | `/dev/ttyUSB0` | USB转串口适配器 |
+| | `/dev/ttyUSB1` | `/dev/ttyUSB0` 不存在时自动尝试的备用 USB 转串口设备 |
 | | `/dev/ttyACM0` | USB CDC ACM 设备 |
 | | `/dev/ttyS0` | 原生串口 COM1 |
 | **Windows Git Bash/MSYS** | `/dev/ttyS2` | 对应 COM3 |
