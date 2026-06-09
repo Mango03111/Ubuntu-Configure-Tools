@@ -14,8 +14,9 @@
 - 通过串口发送 SCPI 命令
 - 支持设备识别测试 (`*idn?`)
 - 支持发送任意 SCPI 命令
-- 支持交互模式
-- 可配置波特率、结束符等参数
+- 支持菜单式交互模式和原始 SCPI 命令行模式
+- 支持单连接、批量建立连接、逐条批量断开连接
+- 可配置波特率、发送结束符、接收结束符等参数
 
 ## 配置参数
 
@@ -25,10 +26,11 @@
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `SERIAL_DEV` | `/dev/ttyUSB0` | 串口设备路径 |
-| `SERIAL_BAUD` | `9600` | 波特率 |
+| `SERIAL_DEV` | `/dev/ttyUSB0` | 串口设备路径，默认不存在时自动尝试 `/dev/ttyUSB1` |
+| `SERIAL_BAUD` | `38400` | 波特率 |
 | `SERIAL_TIMEOUT` | `2` | 读取超时秒数 |
-| `SERIAL_LINE_END` | `CRLF` | 命令结束符 (CR/LF/CRLF) |
+| `SERIAL_LINE_END` | `CRLF` | 发送结束符 (CR/LF/CRLF) |
+| `SERIAL_RECEIVE_LINE_END` | `CR` | 接收结束符 (CR/LF/CRLF) |
 
 ### 串口设备路径
 
@@ -37,6 +39,7 @@
 | 系统 | 串口设备示例 | 说明 |
 |------|-------------|------|
 | **Linux/Ubuntu** | `/dev/ttyUSB0` | USB转串口适配器 |
+| | `/dev/ttyUSB1` | `/dev/ttyUSB0` 不存在时自动尝试的备用 USB 转串口设备 |
 | | `/dev/ttyACM0` | USB CDC ACM 设备 |
 | | `/dev/ttyS0` | 原生串口 COM1 |
 | **Windows Git Bash/MSYS** | `/dev/ttyS2` | 对应 COM3 |
@@ -47,7 +50,7 @@
 > **注意**: Windows 下 COM 端口号 = `/dev/ttyS` 后的数字 + 1
 > 例如: COM3 = `/dev/ttyS2`, COM4 = `/dev/ttyS3`
 
-### 命令结束符
+### 发送/接收结束符
 
 支持三种行结束符模式：
 
@@ -57,18 +60,20 @@
 | `LF` | 换行符 `\n` | Unix/Linux 风格 |
 | `CRLF` | 回车+换行 `\r\n` | 默认，大多数设备 |
 
+当前脚本默认发送结束符为 `CRLF` (`\r\n`)，接收结束符为 `CR` (`\r`)。
+
 ## 使用方法
 
 ### 1. 查看帮助
 
 ```bash
-./serial_optical_control.sh help
+bash ./serial_optical_control.sh help
 ```
 
 或：
 
 ```bash
-./serial_optical_control.sh --help
+bash ./serial_optical_control.sh --help
 ```
 
 ### 2. 测试设备识别 (发送 `*idn?`)
@@ -76,56 +81,98 @@
 **Linux/Ubuntu:**
 ```bash
 # 使用默认串口 /dev/ttyUSB0
-./serial_optical_control.sh idn
+bash ./serial_optical_control.sh idn
 
 # 指定串口设备
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh idn
 
 # 指定波特率
-SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=9600 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=38400 bash ./serial_optical_control.sh idn
 ```
 
 **Windows Git Bash/MSYS (COM3):**
 ```bash
-SERIAL_DEV=/dev/ttyS2 SERIAL_BAUD=9600 SERIAL_LINE_END=CRLF ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyS2 SERIAL_BAUD=38400 SERIAL_LINE_END=CRLF SERIAL_RECEIVE_LINE_END=CR bash ./serial_optical_control.sh idn
 ```
 
 **Windows Git Bash/MSYS (COM4):**
 ```bash
-SERIAL_DEV=/dev/ttyS3 SERIAL_BAUD=9600 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyS3 SERIAL_BAUD=38400 bash ./serial_optical_control.sh idn
 ```
 
 ### 3. 发送自定义 SCPI 命令
 
 ```bash
 # 查询设备标识
-./serial_optical_control.sh cmd '*idn?'
+bash ./serial_optical_control.sh cmd '*idn?'
 
 # 查询端口规模
-./serial_optical_control.sh cmd ':oxc:swit:size?'
+bash ./serial_optical_control.sh cmd ':oxc:swit:size?'
 
 # 查询连接状态
-./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 
 # 建立连接 (端口1 -> 端口17)
-./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
 
 # 断开连接
-./serial_optical_control.sh cmd ':oxc:swit:conn:sub (@1),(@17)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:sub (@1),(@17)'
 
 # 断开所有连接
-./serial_optical_control.sh cmd ':oxc:swit:disc:all'
+bash ./serial_optical_control.sh cmd ':oxc:swit:disc:all'
 ```
 
-### 4. 交互模式
+### 4. 菜单式交互模式
 
 ```bash
-./serial_optical_control.sh interactive
+bash ./serial_optical_control.sh interactive
 ```
 
-进入交互模式后，可以逐行输入命令：
+进入交互模式后，会显示菜单：
 
 ```
+=== 串口光交换机控制菜单 ===
+1. 查询设备信息
+2. 查询光开关端口规模
+3. 建立光路连接
+4. 断开光路连接
+5. 批量建立连接
+6. 批量断开连接
+7. 查询所有连接
+8. 断开所有连接
+9. 自定义SCPI命令
+10. 测试连接功能
+11. 原始命令行模式
+0. 退出
+```
+
+批量建立连接使用官方批量命令，一次发送：
+
+```text
+输入: 1,17;2,18;3,19
+发送: :oxc:swit:conn:add (@1,2,3),(@17,18,19)
+```
+
+批量断开连接保留逐条断开方式：
+
+```text
+输入: 1,17;2,18;3,19
+发送: :oxc:swit:conn:sub (@1),(@17)
+发送: :oxc:swit:conn:sub (@2),(@18)
+发送: :oxc:swit:conn:sub (@3),(@19)
+```
+
+菜单中的 `11. 原始命令行模式` 可进入逐行 SCPI 命令模式。
+
+### 5. 原始命令行模式
+
+```bash
+bash ./serial_optical_control.sh raw
+```
+
+进入原始命令行模式后，可以逐行输入命令：
+
+```text
 serial> *idn?
 Polatis,Model-32x32,S/N-12345,1.0
 
@@ -138,23 +185,28 @@ serial> :oxc:swit:conn:stat?
 serial> exit
 ```
 
-输入 `exit`、`quit` 或 `q` 退出交互模式。
+输入 `exit`、`quit` 或 `q` 退出原始命令行模式。
 
-### 5. 指定参数运行
+### 6. 指定参数运行
 
-**尝试不同波特率:**
+**指定默认波特率:**
 ```bash
-SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=115200 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_BAUD=38400 bash ./serial_optical_control.sh idn
 ```
 
-**尝试不同结束符:**
+**尝试不同发送结束符:**
 ```bash
-SERIAL_DEV=/dev/ttyUSB0 SERIAL_LINE_END=CR ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_LINE_END=CR bash ./serial_optical_control.sh idn
+```
+
+**尝试不同接收结束符:**
+```bash
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_RECEIVE_LINE_END=CR bash ./serial_optical_control.sh idn
 ```
 
 **增加超时时间:**
 ```bash
-SERIAL_DEV=/dev/ttyUSB0 SERIAL_TIMEOUT=5 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 SERIAL_TIMEOUT=5 bash ./serial_optical_control.sh idn
 ```
 
 ## 串口配置说明
@@ -165,6 +217,10 @@ SERIAL_DEV=/dev/ttyUSB0 SERIAL_TIMEOUT=5 ./serial_optical_control.sh idn
 - **停止位**: 1
 - **校验位**: 无
 - **流控**: 禁用（软件流控和硬件流控均禁用）
+- **CTS / RTS**: 禁用
+- **DSR / DTR / RING / RLSD**: 禁用/忽略
+- **发送结束符**: `CRLF` (`\r\n`)
+- **接收结束符**: `CR` (`\r`)
 - **模式**: 原始模式（raw mode）
 
 ## 常见问题排查
@@ -220,14 +276,17 @@ sudo usermod -aG dialout $USER
 
 1. **检查波特率**: 确认设备波特率与脚本设置一致
    ```bash
-   SERIAL_BAUD=115200 ./serial_optical_control.sh idn
+   SERIAL_BAUD=38400 bash ./serial_optical_control.sh idn
    ```
 
-2. **尝试不同的行结束符**:
+2. **尝试不同的发送/接收结束符**:
    ```bash
-   SERIAL_LINE_END=CR ./serial_optical_control.sh idn
-   SERIAL_LINE_END=LF ./serial_optical_control.sh idn
-   SERIAL_LINE_END=CRLF ./serial_optical_control.sh idn
+   SERIAL_LINE_END=CR bash ./serial_optical_control.sh idn
+   SERIAL_LINE_END=LF bash ./serial_optical_control.sh idn
+   SERIAL_LINE_END=CRLF bash ./serial_optical_control.sh idn
+   SERIAL_RECEIVE_LINE_END=CR bash ./serial_optical_control.sh idn
+   SERIAL_RECEIVE_LINE_END=LF bash ./serial_optical_control.sh idn
+   SERIAL_RECEIVE_LINE_END=CRLF bash ./serial_optical_control.sh idn
    ```
 
 3. **检查串口线**: 确认 TX/RX 正确连接（交叉连接）
@@ -236,7 +295,7 @@ sudo usermod -aG dialout $USER
 
 5. **增加超时时间**:
    ```bash
-   SERIAL_TIMEOUT=5 ./serial_optical_control.sh idn
+   SERIAL_TIMEOUT=5 bash ./serial_optical_control.sh idn
    ```
 
 ### 5. WSL 中使用串口
@@ -267,7 +326,7 @@ ls /dev/ttyUSB*
 sudo chmod 666 /dev/ttyUSB0
 
 # 使用脚本
-./serial_optical_control.sh idn
+bash ./serial_optical_control.sh idn
 ```
 
 ## 示例场景
@@ -276,20 +335,20 @@ sudo chmod 666 /dev/ttyUSB0
 
 ```bash
 # 测试设备是否响应
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh idn
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh idn
 ```
 
 ### 场景2: 查询设备信息
 
 ```bash
 # 查询设备标识
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh cmd '*idn?'
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh cmd '*idn?'
 
 # 查询端口规模
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh cmd ':oxc:swit:size?'
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh cmd ':oxc:swit:size?'
 
 # 查询连接状态
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 ```
 
 ### 场景3: 建立光路连接
@@ -297,25 +356,34 @@ SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 ```bash
 # 设置环境变量
 export SERIAL_DEV=/dev/ttyUSB0
-export SERIAL_BAUD=9600
+export SERIAL_BAUD=38400
 
 # 建立连接 (端口1 -> 端口17)
-./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
 
 # 查询连接状态
-./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 
 # 断开连接
-./serial_optical_control.sh cmd ':oxc:swit:conn:sub (@1),(@17)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:sub (@1),(@17)'
 ```
 
-### 场景4: 交互模式操作
+### 场景4: 菜单式交互模式操作
 
 ```bash
-# 启动交互模式
-SERIAL_DEV=/dev/ttyUSB0 ./serial_optical_control.sh interactive
+# 启动菜单式交互模式
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh interactive
 
-# 在交互模式中输入命令
+# 在菜单中选择功能编号，例如 1 查询设备信息、5 批量建立连接、11 进入原始命令行模式
+```
+
+### 场景5: 原始命令行模式操作
+
+```bash
+# 启动原始命令行模式
+SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh raw
+
+# 在原始命令行模式中输入命令
 serial> *idn?
 Polatis,Model-32x32,S/N-12345,1.0
 
@@ -334,25 +402,25 @@ serial> :oxc:swit:conn:sub (@1),(@17)
 serial> exit
 ```
 
-### 场景5: 自动化脚本
+### 场景6: 自动化脚本
 
 ```bash
 #!/bin/bash
 # 自动化配置脚本
 
 export SERIAL_DEV=/dev/ttyUSB0
-export SERIAL_BAUD=9600
+export SERIAL_BAUD=38400
 
 # 断开所有现有连接
-./serial_optical_control.sh cmd ':oxc:swit:disc:all'
+bash ./serial_optical_control.sh cmd ':oxc:swit:disc:all'
 
 # 建立新连接
-./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
-./serial_optical_control.sh cmd ':oxc:swit:conn:add (@2),(@18)'
-./serial_optical_control.sh cmd ':oxc:swit:conn:add (@3),(@19)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@2),(@18)'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@3),(@19)'
 
 # 验证连接
-./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
+bash ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 ```
 
 ## 与网口版本的区别
@@ -362,8 +430,8 @@ export SERIAL_BAUD=9600
 | 通信方式 | TCP Socket (IP + Port 5025) | 串口 (Serial Port) |
 | 依赖工具 | `nc` (netcat) | `stty` (coreutils) |
 | 连接参数 | IP地址 + 端口 | 串口设备 + 波特率 |
-| 界面模式 | 交互式菜单 | 命令行 + 交互模式 |
-| 结束符 | 固定 `\r\n` | 可配置 (CR/LF/CRLF) |
+| 界面模式 | 交互式菜单 | 命令行 + 菜单式交互模式 + 原始命令行模式 |
+| 结束符 | 固定 `\r\n` | 发送/接收均可配置 (CR/LF/CRLF) |
 
 ## 文件说明
 
