@@ -4,3 +4,4 @@
 1. TOR自动配置脚本（OVS-TOR）
 2. 光交换机sokect控制脚本（OCS-Sokect-Control）
 3. APP流量生成脚本（APP）
+4. vllm相关控制脚本
