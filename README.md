@@ -5,3 +5,4 @@
 2. 光交换机sokect控制脚本（OCS-Sokect-Control）
 3. APP流量生成脚本（APP）
 4. vllm相关控制脚本
+5. CX系列网卡相关控制脚本
