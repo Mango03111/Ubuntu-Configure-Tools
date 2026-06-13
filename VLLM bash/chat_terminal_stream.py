@@ -75,7 +75,7 @@ def main() -> int:
 
     prompt_session = PromptSession(multiline=True, key_bindings=kb)
 
-    print("Qwen3.6 terminal chat started.")
+    print("terminal chat started.")
     print(f"Model: {model}")
     print(f"max_model_len: {max_model_len}")
     print(f"root: {model_root}")
