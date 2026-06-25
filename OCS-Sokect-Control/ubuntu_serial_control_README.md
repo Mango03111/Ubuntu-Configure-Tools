@@ -112,6 +112,9 @@ bash ./serial_optical_control.sh cmd ':oxc:swit:size?'
 # 查询连接状态
 bash ./serial_optical_control.sh cmd ':oxc:swit:conn:stat?'
 
+# 查询错误日志
+bash ./serial_optical_control.sh cmd ':syst:err:all?'
+
 # 建立连接 (端口1 -> 端口17)
 bash ./serial_optical_control.sh cmd ':oxc:swit:conn:add (@1),(@17)'
 
@@ -140,9 +143,10 @@ bash ./serial_optical_control.sh interactive
 6. 批量断开连接
 7. 查询所有连接
 8. 断开所有连接
-9. 自定义SCPI命令
-10. 测试连接功能
-11. 原始命令行模式
+9. 查询错误日志
+10. 自定义SCPI命令
+11. 测试连接功能
+12. 原始命令行模式
 0. 退出
 ```
 
@@ -162,7 +166,7 @@ bash ./serial_optical_control.sh interactive
 发送: :oxc:swit:conn:sub (@3),(@19)
 ```
 
-菜单中的 `11. 原始命令行模式` 可进入逐行 SCPI 命令模式。
+菜单中的 `12. 原始命令行模式` 可进入逐行 SCPI 命令模式。
 
 ### 5. 原始命令行模式
 
@@ -374,7 +378,7 @@ bash ./serial_optical_control.sh cmd ':oxc:swit:conn:sub (@1),(@17)'
 # 启动菜单式交互模式
 SERIAL_DEV=/dev/ttyUSB0 bash ./serial_optical_control.sh interactive
 
-# 在菜单中选择功能编号，例如 1 查询设备信息、5 批量建立连接、11 进入原始命令行模式
+# 在菜单中选择功能编号，例如 1 查询设备信息、9 查询错误日志、12 进入原始命令行模式
 ```
 
 ### 场景5: 原始命令行模式操作

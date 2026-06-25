@@ -408,6 +408,22 @@ serial_query_connections() {
     fi
 }
 
+serial_query_error_log() {
+    echo
+    log_info "=== 错误日志 ==="
+
+    local response
+    response=$(serial_query ":syst:err:all?")
+    local status=$?
+
+    if [[ $status -eq 0 && -n "$response" ]]; then
+        echo "错误日志:"
+        echo "$response"
+    else
+        log_warn "未收到错误日志响应，可能设备无错误或不支持该命令"
+    fi
+}
+
 serial_add_link() {
     local input="$1"
     local output="$2"
@@ -612,9 +628,10 @@ serial_show_menu() {
     echo "6. 批量断开连接"
     echo "7. 查询所有连接"
     echo "8. 断开所有连接"
-    echo "9. 自定义SCPI命令"
-    echo "10. 测试连接功能"
-    echo "11. 原始命令行模式"
+    echo "9. 查询错误日志"
+    echo "10. 自定义SCPI命令"
+    echo "11. 测试连接功能"
+    echo "12. 原始命令行模式"
     echo "0. 退出"
     echo -n "请选择: "
 }
@@ -638,9 +655,10 @@ serial_run_controller() {
             6) serial_remove_multiple_links ;;
             7) serial_query_connections ;;
             8) serial_disconnect_all_links ;;
-            9) serial_custom_scpi_command ;;
-            10) serial_test_connection_function ;;
-            11)
+            9) serial_query_error_log ;;
+            10) serial_custom_scpi_command ;;
+            11) serial_test_connection_function ;;
+            12)
                 serial_raw_command_mode
                 continue
                 ;;
@@ -649,7 +667,7 @@ serial_run_controller() {
                 break
                 ;;
             *)
-                log_error "无效选择，请输入0-11的数字"
+                log_error "无效选择，请输入0-12的数字"
                 ;;
         esac
 
@@ -713,10 +731,11 @@ show_help() {
     echo "  $script_cmd cmd '*idn?'"
     echo "  $script_cmd cmd ':oxc:swit:size?'"
     echo "  $script_cmd cmd ':oxc:swit:conn:stat?'"
+    echo "  $script_cmd cmd ':syst:err:all?'"
     echo ""
     echo -e "${GREEN}# 交互模式:${NC}"
     echo "  $script_cmd interactive"
-    echo "  进入后可通过菜单查询设备、管理连接或进入原始命令行模式"
+    echo "  进入后可通过菜单查询设备、错误日志、管理连接或进入原始命令行模式"
     echo ""
     echo -e "${GREEN}# 原始命令行模式:${NC}"
     echo "  $script_cmd raw"

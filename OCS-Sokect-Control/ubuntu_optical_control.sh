@@ -492,6 +492,22 @@ query_switch_size() {
     fi
 }
 
+# 查询错误日志
+query_error_log() {
+    echo
+    log_info "=== 错误日志 ==="
+
+    local result
+    result=$(send_command ":syst:err:all?" 2)
+
+    if [[ $? -eq 0 && ! "$result" =~ ^ERROR: && ! "$result" =~ ^TIMEOUT: && -n "$result" ]]; then
+        echo "错误日志:"
+        echo "$result"
+    else
+        log_warn "未收到错误日志响应，可能设备无错误或不支持该命令"
+    fi
+}
+
 # 建立单个光路连接（菜单功能）
 create_single_connection() {
     echo
@@ -661,9 +677,10 @@ show_menu() {
     echo "6. 批量断开连接"
     echo "7. 查询所有连接"
     echo "8. 断开所有连接"
-    echo "9. 自定义SCPI命令"
-    echo "10. 测试连接功能"
-    echo "11. 重新连接设备"
+    echo "9. 查询错误日志"
+    echo "10. 自定义SCPI命令"
+    echo "11. 测试连接功能"
+    echo "12. 重新连接设备"
     echo "0. 退出"
     echo -n "请选择: "
 }
@@ -683,9 +700,10 @@ run_controller() {
             6) remove_multiple_links ;;
             7) query_connections ;;
             8) disconnect_all_links ;;
-            9) custom_scpi_command ;;
-            10) test_connection_function ;;
-            11)
+            9) query_error_log ;;
+            10) custom_scpi_command ;;
+            11) test_connection_function ;;
+            12)
                 cleanup
                 get_valid_ip
                 local retry=0
@@ -703,7 +721,7 @@ run_controller() {
                 exit 0
                 ;;
             *)
-                log_error "无效选择，请输入0-11的数字"
+                log_error "无效选择，请输入0-12的数字"
                 ;;
         esac
         
