@@ -807,6 +807,660 @@
       }
     }
 
+    /* Single-screen 16:9 workspace. The rules above remain as the scrollable
+       baseline; this layer packs the complete console into one desktop view. */
+    body {
+      height: 100dvh;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .dashboard {
+      display: grid;
+      width: 100%;
+      height: 100dvh;
+      max-width: none;
+      margin: 0;
+      padding: 12px;
+      grid-template-rows: 54px minmax(0, 1fr);
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    footer {
+      display: none;
+    }
+
+    .topbar {
+      position: relative;
+      top: auto;
+      z-index: 20;
+      display: grid;
+      height: 100%;
+      min-height: 0;
+      padding: 6px 9px;
+      grid-template-columns: minmax(320px, auto) minmax(300px, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      border-radius: 12px;
+    }
+
+    .brand-row {
+      min-width: 0;
+      gap: 9px;
+    }
+
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+    }
+
+    .brand-mark::before {
+      top: 7px;
+      left: 7px;
+      width: 5px;
+      height: 5px;
+    }
+
+    .brand-mark::after {
+      right: 6px;
+      bottom: 6px;
+      width: 8px;
+      height: 8px;
+    }
+
+    .brand-copy {
+      flex: 0 1 auto;
+    }
+
+    .eyebrow {
+      margin-bottom: 0;
+      font-size: 8px;
+      line-height: 1.05;
+    }
+
+    h1 {
+      font-size: clamp(16px, 1.15vw, 20px);
+      line-height: 1.15;
+    }
+
+    .connection-state {
+      min-height: 27px;
+      padding: 4px 8px;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+    }
+
+    .meta-strip {
+      display: grid;
+      min-width: 0;
+      height: 100%;
+      margin: 0;
+      grid-template-columns: minmax(120px, 1.45fr) minmax(80px, 0.8fr) minmax(105px, 0.9fr) minmax(76px, 0.65fr);
+      gap: 0;
+      overflow: hidden;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .meta-item {
+      display: flex;
+      min-width: 0;
+      padding: 1px 10px;
+      flex-direction: column;
+      justify-content: center;
+      border-left: 1px solid var(--border);
+      background: transparent;
+    }
+
+    .meta-label {
+      margin-bottom: 1px;
+      font-size: 8px;
+      line-height: 1.1;
+    }
+
+    .meta-value {
+      font-size: 10px;
+      line-height: 1.25;
+    }
+
+    .toolbar {
+      flex-wrap: nowrap;
+      gap: 5px;
+    }
+
+    .select-control {
+      height: 30px;
+      padding-left: 8px;
+      gap: 5px;
+      border-radius: 8px;
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    select {
+      height: 28px;
+      padding: 0 22px 0 5px;
+      font-size: 11px;
+    }
+
+    .toolbar-button {
+      height: 30px;
+      padding: 0 9px;
+      border-radius: 8px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .paused-note {
+      flex: 0 0 auto;
+      font-family: var(--mono);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .alert {
+      position: fixed;
+      top: 74px;
+      right: 12px;
+      z-index: 100;
+      width: min(470px, calc(100vw - 24px));
+      max-height: 96px;
+      margin: 0;
+      padding: 10px 12px;
+      overflow: hidden;
+      border-radius: 10px;
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.38);
+      backdrop-filter: blur(14px);
+    }
+
+    .alert-message {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    main {
+      display: grid;
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) clamp(286px, 22vw, 390px);
+      grid-template-rows: 86px repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    main > section:first-child {
+      min-width: 0;
+      min-height: 0;
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+
+    .section-heading {
+      display: none;
+    }
+
+    .metric-grid {
+      height: 100%;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .metric-card {
+      display: flex;
+      min-height: 0;
+      height: 100%;
+      padding: 12px 13px 10px;
+      flex-direction: column;
+      justify-content: center;
+      border-radius: 12px;
+    }
+
+    .metric-card::before {
+      left: 13px;
+      width: 32px;
+    }
+
+    .metric-label {
+      overflow: hidden;
+      font-size: 11px;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .metric-reading {
+      margin-top: 8px;
+      gap: 5px;
+    }
+
+    .metric-value {
+      font-size: clamp(23px, 1.9vw, 32px);
+    }
+
+    .metric-unit {
+      font-size: 9px;
+    }
+
+    .metric-foot {
+      display: none;
+    }
+
+    .chart-section,
+    .details-section,
+    .chart-grid,
+    .detail-grid {
+      display: contents;
+    }
+
+    .chart-grid > .chart-panel:nth-child(1) {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .chart-grid > .chart-panel:nth-child(2) {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    .chart-grid > .chart-panel:nth-child(3) {
+      grid-column: 1;
+      grid-row: 3;
+    }
+
+    .chart-grid > .chart-panel:nth-child(4) {
+      grid-column: 2;
+      grid-row: 3;
+    }
+
+    .detail-grid > .detail-panel:first-child {
+      grid-column: 3;
+      grid-row: 2;
+    }
+
+    .detail-grid > .detail-panel:last-child {
+      grid-column: 3;
+      grid-row: 3;
+    }
+
+    .chart-panel,
+    .detail-panel {
+      min-height: 0;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .chart-panel {
+      display: flex;
+      padding: 10px 10px 7px;
+      flex-direction: column;
+    }
+
+    .detail-panel {
+      display: flex;
+      padding: 10px;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      min-height: 25px;
+      padding: 0 1px;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title {
+      overflow: hidden;
+      font-size: 12px;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .panel-subtitle {
+      display: none;
+    }
+
+    .legend {
+      flex-wrap: nowrap;
+      gap: 5px 9px;
+      font-size: 9px;
+    }
+
+    .legend-dot {
+      width: 6px;
+      height: 6px;
+      margin-right: 4px;
+    }
+
+    .chart-wrap {
+      height: auto;
+      min-height: 0;
+      margin-top: 3px;
+      flex: 1 1 auto;
+    }
+
+    .latency-table-wrap {
+      min-height: 0;
+      margin-top: 3px;
+      overflow: hidden;
+      flex: 1 1 auto;
+    }
+
+    .latency-table {
+      min-width: 0;
+      height: 100%;
+      table-layout: fixed;
+    }
+
+    .latency-table th,
+    .latency-table td {
+      padding: 5px 4px;
+    }
+
+    .latency-table th:first-child,
+    .latency-table td:first-child {
+      width: 37%;
+    }
+
+    .latency-table thead th {
+      padding-top: 3px;
+      font-size: 8px;
+    }
+
+    .latency-name {
+      overflow: hidden;
+      font-size: 10px;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .latency-description {
+      display: none;
+    }
+
+    .latency-value {
+      overflow: hidden;
+      font-size: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .health-grid {
+      min-height: 0;
+      margin-top: 4px;
+      gap: 5px;
+      flex: 1 1 auto;
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+    }
+
+    .health-stat {
+      display: flex;
+      min-height: 0;
+      padding: 7px 8px;
+      flex-direction: column;
+      justify-content: center;
+      border-radius: 8px;
+    }
+
+    .health-value {
+      margin-top: 3px;
+      font-size: 13px;
+      line-height: 1.15;
+    }
+
+    .last-error-block {
+      min-height: 38px;
+      margin-top: 5px;
+      padding: 6px 8px;
+      border-radius: 8px;
+    }
+
+    .last-error {
+      min-height: 0;
+      margin: 3px 0 0;
+      overflow: hidden;
+      font-size: 9px;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dashboard.is-stale .detail-panel {
+      border-color: rgba(240, 189, 98, 0.16);
+    }
+
+    @media (max-width: 1440px) and (min-width: 1180px) {
+      .topbar {
+        grid-template-columns: minmax(300px, auto) minmax(260px, 1fr) auto;
+        gap: 8px;
+      }
+
+      .meta-item {
+        padding-right: 6px;
+        padding-left: 6px;
+      }
+
+      main {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) clamp(280px, 22vw, 330px);
+      }
+    }
+
+    @media (max-height: 820px) and (min-width: 1180px) {
+      .dashboard {
+        padding: 8px;
+        grid-template-rows: 46px minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .topbar {
+        padding: 4px 7px;
+      }
+
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+      }
+
+      .eyebrow {
+        display: none;
+      }
+
+      h1 {
+        font-size: 16px;
+      }
+
+      .connection-state,
+      .select-control,
+      .toolbar-button {
+        min-height: 0;
+        height: 28px;
+      }
+
+      select {
+        height: 26px;
+      }
+
+      main {
+        grid-template-rows: 76px repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .metric-grid {
+        gap: 6px;
+      }
+
+      .metric-card {
+        padding: 9px 11px 7px;
+      }
+
+      .metric-reading {
+        margin-top: 6px;
+      }
+
+      .metric-value {
+        font-size: clamp(21px, 1.75vw, 27px);
+      }
+
+      .chart-panel,
+      .detail-panel {
+        padding: 7px;
+      }
+
+      .panel-header {
+        min-height: 22px;
+      }
+
+      .latency-table th,
+      .latency-table td {
+        padding: 3px;
+      }
+
+      .health-stat {
+        padding: 5px 7px;
+      }
+
+      .last-error-block {
+        min-height: 32px;
+        padding: 4px 7px;
+      }
+
+      .alert {
+        top: 62px;
+      }
+    }
+
+    /* Below the single-screen envelope, readability wins and normal page
+       scrolling is restored instead of shrinking controls and charts further. */
+    @media (max-width: 1179px), (max-height: 599px) {
+      body {
+        height: auto;
+        min-height: 100vh;
+        overflow: auto;
+      }
+
+      .dashboard {
+        display: block;
+        height: auto;
+        min-height: 100dvh;
+        padding: 10px;
+        overflow: visible;
+      }
+
+      .topbar {
+        position: static;
+        display: flex;
+        height: auto;
+        min-height: 54px;
+        padding: 8px;
+        flex-wrap: wrap;
+      }
+
+      .brand-row {
+        flex: 1 1 320px;
+      }
+
+      .toolbar {
+        flex: 0 1 auto;
+      }
+
+      .meta-strip {
+        width: 100%;
+        height: 40px;
+        order: 3;
+        grid-template-columns: minmax(150px, 1.4fr) repeat(3, minmax(90px, 1fr));
+      }
+
+      .meta-item:first-child {
+        border-left: 0;
+      }
+
+      .alert {
+        top: 10px;
+        right: 10px;
+      }
+
+      main {
+        display: block;
+        margin-top: 8px;
+        overflow: visible;
+      }
+
+      main > section:first-child {
+        display: block;
+      }
+
+      .metric-grid {
+        height: auto;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .metric-card {
+        min-height: 94px;
+      }
+
+      .chart-section,
+      .details-section {
+        display: block;
+        margin-top: 8px;
+      }
+
+      .chart-grid,
+      .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .chart-grid > .chart-panel,
+      .detail-grid > .detail-panel {
+        min-height: 280px;
+        grid-column: auto !important;
+        grid-row: auto !important;
+      }
+
+      .detail-grid > .detail-panel {
+        min-height: 250px;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .topbar,
+      .brand-row {
+        align-items: flex-start;
+      }
+
+      .toolbar {
+        width: 100%;
+      }
+
+      .meta-strip {
+        height: auto;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .meta-item {
+        min-height: 38px;
+      }
+
+      .metric-grid,
+      .chart-grid,
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         scroll-behavior: auto !important;
@@ -832,6 +1486,25 @@
         </div>
       </div>
 
+      <section class="meta-strip" aria-label="连接信息">
+        <div class="meta-item">
+          <span class="meta-label">Metrics source</span>
+          <span class="meta-value" id="source-value" title="--">--</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Model</span>
+          <span class="meta-value" id="model-value">--</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Last sample</span>
+          <span class="meta-value" id="sample-time-value">--</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Backend poll</span>
+          <span class="meta-value" id="backend-poll-value">--</span>
+        </div>
+      </section>
+
       <div class="toolbar" aria-label="仪表盘控制">
         <label class="select-control" for="refresh-interval">
           <span>刷新间隔</span>
@@ -844,6 +1517,7 @@
         </label>
         <button class="toolbar-button" type="button" id="pause-button" aria-pressed="false">暂停图表</button>
         <button class="toolbar-button" type="button" id="clear-button">清空趋势</button>
+        <span class="paused-note" aria-live="polite">图表已暂停</span>
       </div>
     </header>
 
@@ -854,25 +1528,6 @@
         <span class="alert-message" id="error-message"></span>
       </div>
     </div>
-
-    <section class="meta-strip" aria-label="连接信息">
-      <div class="meta-item">
-        <span class="meta-label">Metrics source</span>
-        <span class="meta-value" id="source-value" title="--">--</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Model</span>
-        <span class="meta-value" id="model-value">--</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Last sample</span>
-        <span class="meta-value" id="sample-time-value">--</span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Backend poll</span>
-        <span class="meta-value" id="backend-poll-value">--</span>
-      </div>
-    </section>
 
     <main>
       <section aria-labelledby="overview-title">
@@ -1054,6 +1709,18 @@
                     <td class="latency-value" id="itl-p90">--</td>
                     <td class="latency-value" id="itl-p99">--</td>
                   </tr>
+                  <tr>
+                    <td><span class="latency-name">TPOT</span><span class="latency-description">每输出 token 耗时</span></td>
+                    <td class="latency-value" id="tpot-p50">--</td>
+                    <td class="latency-value" id="tpot-p90">--</td>
+                    <td class="latency-value" id="tpot-p99">--</td>
+                  </tr>
+                  <tr>
+                    <td><span class="latency-name">Queue</span><span class="latency-description">队列等待耗时</span></td>
+                    <td class="latency-value" id="queue-p50">--</td>
+                    <td class="latency-value" id="queue-p90">--</td>
+                    <td class="latency-value" id="queue-p99">--</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -1146,7 +1813,7 @@
       };
 
       const latencyCells = {};
-      for (const family of ["e2e", "ttft", "itl"]) {
+      for (const family of ["e2e", "ttft", "itl", "tpot", "queue"]) {
         for (const percentile of ["p50", "p90", "p99"]) {
           latencyCells[`${family}_${percentile}`] = document.getElementById(`${family}-${percentile}`);
         }
@@ -1294,7 +1961,13 @@
             ttft_p99: numberAt(payload, "latency.ttft_p99"),
             itl_p50: numberAt(payload, "latency.itl_p50"),
             itl_p90: numberAt(payload, "latency.itl_p90"),
-            itl_p99: numberAt(payload, "latency.itl_p99")
+            itl_p99: numberAt(payload, "latency.itl_p99"),
+            tpot_p50: numberAt(payload, "latency.tpot_p50"),
+            tpot_p90: numberAt(payload, "latency.tpot_p90"),
+            tpot_p99: numberAt(payload, "latency.tpot_p99"),
+            queue_p50: numberAt(payload, "latency.queue_p50"),
+            queue_p90: numberAt(payload, "latency.queue_p90"),
+            queue_p99: numberAt(payload, "latency.queue_p99")
           }
         };
       }
@@ -1317,6 +1990,7 @@
 
       function setLastError(message) {
         elements.lastError.textContent = message || "无";
+        elements.lastError.title = message || "无";
         elements.lastError.classList.toggle("has-error", Boolean(message));
       }
 
