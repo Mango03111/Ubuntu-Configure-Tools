@@ -1,0 +1,1723 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <title>vLLM Performance Console</title>
+  <style>
+    :root {
+      --bg: #071019;
+      --panel: #0d1823;
+      --panel-strong: #111f2d;
+      --panel-soft: rgba(16, 30, 43, 0.74);
+      --border: rgba(154, 181, 204, 0.15);
+      --border-strong: rgba(154, 181, 204, 0.24);
+      --text: #e7f0f7;
+      --muted: #8396a8;
+      --muted-strong: #a6b7c6;
+      --green: #51d6a2;
+      --green-soft: rgba(81, 214, 162, 0.12);
+      --cyan: #55c7f3;
+      --blue: #6f9cff;
+      --violet: #ae8cff;
+      --amber: #f0bd62;
+      --red: #ff7180;
+      --red-soft: rgba(255, 113, 128, 0.11);
+      --shadow: 0 18px 52px rgba(0, 0, 0, 0.26);
+      --radius: 14px;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-width: 320px;
+      background: var(--bg);
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% -10%, rgba(47, 119, 165, 0.18), transparent 34rem),
+        radial-gradient(circle at 95% 0%, rgba(76, 83, 168, 0.12), transparent 30rem),
+        linear-gradient(180deg, #08131d 0, var(--bg) 36rem);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button,
+    select {
+      font: inherit;
+    }
+
+    button:focus-visible,
+    select:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 2px;
+    }
+
+    .dashboard {
+      width: min(1680px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 12px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 72px;
+      padding: 14px 16px 14px 20px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      background: rgba(10, 22, 32, 0.9);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: 16px;
+    }
+
+    .brand-mark {
+      position: relative;
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      border: 1px solid rgba(85, 199, 243, 0.35);
+      border-radius: 10px;
+      background:
+        linear-gradient(135deg, rgba(85, 199, 243, 0.22), rgba(111, 156, 255, 0.05)),
+        var(--panel-strong);
+      box-shadow: inset 0 0 18px rgba(85, 199, 243, 0.08);
+    }
+
+    .brand-mark::before,
+    .brand-mark::after {
+      position: absolute;
+      content: "";
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 10px rgba(85, 199, 243, 0.7);
+    }
+
+    .brand-mark::before {
+      width: 6px;
+      height: 6px;
+      top: 9px;
+      left: 9px;
+    }
+
+    .brand-mark::after {
+      width: 10px;
+      height: 10px;
+      right: 8px;
+      bottom: 8px;
+    }
+
+    .brand-copy {
+      min-width: 0;
+    }
+
+    .eyebrow {
+      margin: 0 0 2px;
+      color: var(--cyan);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      overflow: hidden;
+      margin: 0;
+      font-size: clamp(18px, 2vw, 24px);
+      font-weight: 680;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .connection-state {
+      display: inline-flex;
+      align-items: center;
+      flex: 0 0 auto;
+      gap: 8px;
+      min-height: 32px;
+      padding: 6px 11px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted-strong);
+      background: rgba(255, 255, 255, 0.025);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      box-shadow: 0 0 0 4px rgba(131, 150, 168, 0.08);
+    }
+
+    .connection-state[data-state="online"] {
+      color: var(--green);
+      border-color: rgba(81, 214, 162, 0.25);
+      background: var(--green-soft);
+    }
+
+    .connection-state[data-state="online"] .status-dot {
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(81, 214, 162, 0.1), 0 0 12px rgba(81, 214, 162, 0.55);
+    }
+
+    .connection-state[data-state="warning"] {
+      color: var(--amber);
+      border-color: rgba(240, 189, 98, 0.25);
+      background: rgba(240, 189, 98, 0.09);
+    }
+
+    .connection-state[data-state="warning"] .status-dot {
+      background: var(--amber);
+      box-shadow: 0 0 0 4px rgba(240, 189, 98, 0.1);
+    }
+
+    .connection-state[data-state="offline"] {
+      color: var(--red);
+      border-color: rgba(255, 113, 128, 0.28);
+      background: var(--red-soft);
+    }
+
+    .connection-state[data-state="offline"] .status-dot {
+      background: var(--red);
+      box-shadow: 0 0 0 4px rgba(255, 113, 128, 0.1);
+    }
+
+    .connection-state[data-state="connecting"] .status-dot {
+      animation: status-pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes status-pulse {
+      50% { opacity: 0.35; transform: scale(0.76); }
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      flex: 0 0 auto;
+      gap: 8px;
+    }
+
+    .select-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 36px;
+      padding-left: 11px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.025);
+      font-size: 12px;
+    }
+
+    select {
+      height: 34px;
+      padding: 0 28px 0 8px;
+      border: 0;
+      color: var(--text);
+      background: var(--panel-strong);
+      cursor: pointer;
+    }
+
+    .toolbar-button {
+      height: 36px;
+      padding: 0 13px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--muted-strong);
+      background: rgba(255, 255, 255, 0.025);
+      cursor: pointer;
+      transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+    }
+
+    .toolbar-button:hover {
+      color: var(--text);
+      border-color: var(--border-strong);
+      background: rgba(255, 255, 255, 0.055);
+    }
+
+    .toolbar-button[aria-pressed="true"] {
+      color: var(--amber);
+      border-color: rgba(240, 189, 98, 0.28);
+      background: rgba(240, 189, 98, 0.09);
+    }
+
+    .alert {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 11px;
+      margin-top: 12px;
+      padding: 12px 15px;
+      border: 1px solid rgba(255, 113, 128, 0.25);
+      border-radius: 11px;
+      color: #ffc2c9;
+      background: rgba(80, 21, 31, 0.44);
+    }
+
+    .alert[hidden] {
+      display: none;
+    }
+
+    .alert-icon {
+      display: grid;
+      width: 21px;
+      height: 21px;
+      place-items: center;
+      border: 1px solid rgba(255, 113, 128, 0.45);
+      border-radius: 50%;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .alert-title {
+      display: block;
+      margin-bottom: 2px;
+      color: #ffdbe0;
+      font-weight: 680;
+    }
+
+    .alert-message {
+      overflow-wrap: anywhere;
+      color: #dcaab1;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .meta-strip {
+      display: grid;
+      grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(150px, 1fr));
+      gap: 1px;
+      overflow: hidden;
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--border);
+    }
+
+    .meta-item {
+      min-width: 0;
+      padding: 10px 13px;
+      background: rgba(10, 22, 32, 0.92);
+    }
+
+    .meta-label {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .meta-value {
+      display: block;
+      overflow: hidden;
+      color: var(--muted-strong);
+      font-family: var(--mono);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    main {
+      padding-top: 22px;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 0 2px 10px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .section-note {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric-card {
+      position: relative;
+      min-width: 0;
+      min-height: 134px;
+      padding: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(17, 31, 45, 0.96), rgba(11, 24, 35, 0.94));
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+    }
+
+    .metric-card::before {
+      position: absolute;
+      top: 0;
+      left: 16px;
+      width: 38px;
+      height: 2px;
+      content: "";
+      border-radius: 0 0 4px 4px;
+      background: var(--accent, var(--cyan));
+      box-shadow: 0 0 12px color-mix(in srgb, var(--accent, var(--cyan)) 50%, transparent);
+    }
+
+    .metric-card[data-accent="green"] { --accent: var(--green); }
+    .metric-card[data-accent="amber"] { --accent: var(--amber); }
+    .metric-card[data-accent="cyan"] { --accent: var(--cyan); }
+    .metric-card[data-accent="blue"] { --accent: var(--blue); }
+    .metric-card[data-accent="violet"] { --accent: var(--violet); }
+
+    .metric-label {
+      margin: 0;
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 640;
+    }
+
+    .metric-reading {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      min-width: 0;
+      margin-top: 14px;
+    }
+
+    .metric-value {
+      overflow: hidden;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: clamp(27px, 2.25vw, 38px);
+      font-variant-numeric: tabular-nums;
+      font-weight: 680;
+      letter-spacing: -0.055em;
+      line-height: 1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .metric-unit {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .metric-foot {
+      position: absolute;
+      right: 16px;
+      bottom: 13px;
+      left: 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .metric-signal {
+      color: var(--accent, var(--cyan));
+      font-family: var(--mono);
+      letter-spacing: 0.04em;
+    }
+
+    .dashboard.is-stale .metric-card,
+    .dashboard.is-stale .chart-panel {
+      border-color: rgba(240, 189, 98, 0.16);
+    }
+
+    .chart-section {
+      margin-top: 24px;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .chart-panel,
+    .detail-panel {
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(14, 28, 40, 0.96), rgba(10, 21, 31, 0.96));
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+    }
+
+    .chart-panel {
+      padding: 15px 15px 10px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 15px;
+      min-height: 38px;
+      padding: 0 2px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    .panel-subtitle {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 7px 12px;
+      color: var(--muted-strong);
+      font-size: 10px;
+    }
+
+    .legend-item {
+      white-space: nowrap;
+    }
+
+    .legend-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      margin-right: 5px;
+      border-radius: 50%;
+      background: var(--series-color);
+      box-shadow: 0 0 7px color-mix(in srgb, var(--series-color) 48%, transparent);
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 245px;
+      margin-top: 8px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .details-section {
+      margin-top: 24px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.7fr);
+      gap: 10px;
+    }
+
+    .detail-panel {
+      padding: 17px;
+    }
+
+    .latency-table-wrap {
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+
+    .latency-table {
+      width: 100%;
+      min-width: 530px;
+      border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .latency-table th,
+    .latency-table td {
+      padding: 13px 14px;
+      border-top: 1px solid var(--border);
+      text-align: right;
+    }
+
+    .latency-table thead th {
+      padding-top: 8px;
+      border-top: 0;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .latency-table th:first-child,
+    .latency-table td:first-child {
+      text-align: left;
+    }
+
+    .latency-name {
+      display: block;
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .latency-description {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .latency-value {
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .health-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .health-stat {
+      min-width: 0;
+      padding: 11px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .health-value {
+      display: block;
+      overflow: hidden;
+      margin-top: 5px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 17px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .last-error-block {
+      margin-top: 10px;
+      padding: 11px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .last-error {
+      min-height: 36px;
+      margin: 6px 0 0;
+      overflow-wrap: anywhere;
+      color: var(--muted-strong);
+      font-family: var(--mono);
+      font-size: 11px;
+      white-space: pre-wrap;
+    }
+
+    .last-error.has-error {
+      color: #ffabb4;
+    }
+
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 2px 6px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+
+    .paused-note {
+      display: none;
+      color: var(--amber);
+    }
+
+    .dashboard.is-paused .paused-note {
+      display: inline;
+    }
+
+    @media (max-width: 1250px) {
+      .metric-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 940px) {
+      .topbar {
+        position: static;
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .toolbar {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .meta-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .chart-grid,
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .dashboard {
+        padding: 10px;
+      }
+
+      .topbar {
+        top: 0;
+        padding: 13px;
+      }
+
+      .brand-row {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+      }
+
+      .connection-state {
+        min-height: 28px;
+        padding: 4px 9px;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .select-control {
+        grid-column: 1 / -1;
+        justify-content: space-between;
+      }
+
+      .toolbar-button {
+        width: 100%;
+      }
+
+      .meta-strip,
+      .metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .metric-card {
+        min-height: 122px;
+        padding: 14px;
+      }
+
+      .metric-value {
+        font-size: clamp(24px, 8vw, 32px);
+      }
+
+      .chart-panel,
+      .detail-panel {
+        padding: 13px;
+      }
+
+      .chart-wrap {
+        height: 220px;
+      }
+
+      .panel-header {
+        flex-direction: column;
+      }
+
+      .legend {
+        justify-content: flex-start;
+      }
+
+      .health-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .metric-grid,
+      .meta-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .metric-card {
+        min-height: 112px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard" id="dashboard">
+    <header class="topbar">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div class="brand-copy">
+          <p class="eyebrow">Local telemetry</p>
+          <h1>vLLM Performance Console</h1>
+        </div>
+        <div class="connection-state" id="connection-state" data-state="connecting" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="connection-label">正在连接</span>
+        </div>
+      </div>
+
+      <div class="toolbar" aria-label="仪表盘控制">
+        <label class="select-control" for="refresh-interval">
+          <span>刷新间隔</span>
+          <select id="refresh-interval">
+            <option value="200">200 ms</option>
+            <option value="500" selected>500 ms</option>
+            <option value="1000">1 s</option>
+            <option value="2000">2 s</option>
+          </select>
+        </label>
+        <button class="toolbar-button" type="button" id="pause-button" aria-pressed="false">暂停图表</button>
+        <button class="toolbar-button" type="button" id="clear-button">清空趋势</button>
+      </div>
+    </header>
+
+    <div class="alert" id="error-alert" role="alert" hidden>
+      <span class="alert-icon" aria-hidden="true">!</span>
+      <div>
+        <strong class="alert-title" id="error-title">指标服务异常</strong>
+        <span class="alert-message" id="error-message"></span>
+      </div>
+    </div>
+
+    <section class="meta-strip" aria-label="连接信息">
+      <div class="meta-item">
+        <span class="meta-label">Metrics source</span>
+        <span class="meta-value" id="source-value" title="--">--</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Model</span>
+        <span class="meta-value" id="model-value">--</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Last sample</span>
+        <span class="meta-value" id="sample-time-value">--</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Backend poll</span>
+        <span class="meta-value" id="backend-poll-value">--</span>
+      </div>
+    </section>
+
+    <main>
+      <section aria-labelledby="overview-title">
+        <div class="section-heading">
+          <h2 id="overview-title">实时概览</h2>
+          <span class="section-note">CURRENT SNAPSHOT</span>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric-card" data-accent="green">
+            <p class="metric-label">Running requests</p>
+            <div class="metric-reading">
+              <span class="metric-value" id="running-value">--</span>
+              <span class="metric-unit">req</span>
+            </div>
+            <div class="metric-foot"><span>当前执行</span><span class="metric-signal">RUN</span></div>
+          </article>
+
+          <article class="metric-card" data-accent="amber">
+            <p class="metric-label">Waiting requests</p>
+            <div class="metric-reading">
+              <span class="metric-value" id="waiting-value">--</span>
+              <span class="metric-unit">req</span>
+            </div>
+            <div class="metric-foot"><span>队列等待</span><span class="metric-signal">QUEUE</span></div>
+          </article>
+
+          <article class="metric-card" data-accent="cyan">
+            <p class="metric-label">Generation throughput</p>
+            <div class="metric-reading">
+              <span class="metric-value" id="generation-value">--</span>
+              <span class="metric-unit">tok/s</span>
+            </div>
+            <div class="metric-foot"><span>输出 tokens</span><span class="metric-signal">DECODE</span></div>
+          </article>
+
+          <article class="metric-card" data-accent="blue">
+            <p class="metric-label">Prompt throughput</p>
+            <div class="metric-reading">
+              <span class="metric-value" id="prompt-value">--</span>
+              <span class="metric-unit">tok/s</span>
+            </div>
+            <div class="metric-foot"><span>输入 tokens</span><span class="metric-signal">PREFILL</span></div>
+          </article>
+
+          <article class="metric-card" data-accent="violet">
+            <p class="metric-label">KV cache usage</p>
+            <div class="metric-reading">
+              <span class="metric-value" id="kv-cache-value">--</span>
+              <span class="metric-unit">%</span>
+            </div>
+            <div class="metric-foot"><span>GPU KV 缓存</span><span class="metric-signal">CACHE</span></div>
+          </article>
+
+          <article class="metric-card" data-accent="green">
+            <p class="metric-label">Request rate</p>
+            <div class="metric-reading">
+              <span class="metric-value" id="request-rate-value">--</span>
+              <span class="metric-unit">req/s</span>
+            </div>
+            <div class="metric-foot"><span>成功请求速率</span><span class="metric-signal">RATE</span></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="chart-section" aria-labelledby="trend-title">
+        <div class="section-heading">
+          <h2 id="trend-title">60 秒趋势</h2>
+          <span class="section-note"><span class="paused-note">图表已暂停 · </span>IN-MEMORY WINDOW</span>
+        </div>
+
+        <div class="chart-grid">
+          <article class="chart-panel">
+            <div class="panel-header">
+              <div>
+                <h3 class="panel-title">Token throughput</h3>
+                <div class="panel-subtitle">每秒处理 token 数</div>
+              </div>
+              <div class="legend" aria-hidden="true">
+                <span class="legend-item"><i class="legend-dot" style="--series-color: var(--cyan)"></i>Generation</span>
+                <span class="legend-item"><i class="legend-dot" style="--series-color: var(--blue)"></i>Prompt</span>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="tokens-chart" role="img" aria-label="最近 60 秒生成与输入 token 每秒趋势">浏览器不支持 Canvas。</canvas>
+            </div>
+          </article>
+
+          <article class="chart-panel">
+            <div class="panel-header">
+              <div>
+                <h3 class="panel-title">Request concurrency</h3>
+                <div class="panel-subtitle">运行中与排队请求</div>
+              </div>
+              <div class="legend" aria-hidden="true">
+                <span class="legend-item"><i class="legend-dot" style="--series-color: var(--green)"></i>Running</span>
+                <span class="legend-item"><i class="legend-dot" style="--series-color: var(--amber)"></i>Waiting</span>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="requests-chart" role="img" aria-label="最近 60 秒运行中与排队请求趋势">浏览器不支持 Canvas。</canvas>
+            </div>
+          </article>
+
+          <article class="chart-panel">
+            <div class="panel-header">
+              <div>
+                <h3 class="panel-title">KV cache pressure</h3>
+                <div class="panel-subtitle">缓存使用率</div>
+              </div>
+              <div class="legend" aria-hidden="true">
+                <span class="legend-item"><i class="legend-dot" style="--series-color: var(--violet)"></i>Usage</span>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="cache-chart" role="img" aria-label="最近 60 秒 KV 缓存使用率趋势">浏览器不支持 Canvas。</canvas>
+            </div>
+          </article>
+
+          <article class="chart-panel">
+            <div class="panel-header">
+              <div>
+                <h3 class="panel-title">End-to-end latency</h3>
+                <div class="panel-subtitle">请求延迟分位数 · 毫秒</div>
+              </div>
+              <div class="legend" aria-hidden="true">
+                <span class="legend-item"><i class="legend-dot" style="--series-color: var(--green)"></i>p50</span>
+                <span class="legend-item"><i class="legend-dot" style="--series-color: var(--amber)"></i>p90</span>
+                <span class="legend-item"><i class="legend-dot" style="--series-color: var(--red)"></i>p99</span>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="latency-chart" role="img" aria-label="最近 60 秒端到端延迟 p50、p90 和 p99 趋势">浏览器不支持 Canvas。</canvas>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="details-section" aria-labelledby="details-title">
+        <div class="section-heading">
+          <h2 id="details-title">延迟与健康状态</h2>
+          <span class="section-note">LATEST HISTOGRAM WINDOW</span>
+        </div>
+
+        <div class="detail-grid">
+          <article class="detail-panel">
+            <div class="panel-header">
+              <div>
+                <h3 class="panel-title">Latency percentiles</h3>
+                <div class="panel-subtitle">样本不足时显示 --</div>
+              </div>
+            </div>
+            <div class="latency-table-wrap">
+              <table class="latency-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Metric</th>
+                    <th scope="col">p50</th>
+                    <th scope="col">p90</th>
+                    <th scope="col">p99</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="latency-name">E2E latency</span><span class="latency-description">完整请求耗时</span></td>
+                    <td class="latency-value" id="e2e-p50">--</td>
+                    <td class="latency-value" id="e2e-p90">--</td>
+                    <td class="latency-value" id="e2e-p99">--</td>
+                  </tr>
+                  <tr>
+                    <td><span class="latency-name">TTFT</span><span class="latency-description">首 token 延迟</span></td>
+                    <td class="latency-value" id="ttft-p50">--</td>
+                    <td class="latency-value" id="ttft-p90">--</td>
+                    <td class="latency-value" id="ttft-p99">--</td>
+                  </tr>
+                  <tr>
+                    <td><span class="latency-name">ITL</span><span class="latency-description">token 间延迟</span></td>
+                    <td class="latency-value" id="itl-p50">--</td>
+                    <td class="latency-value" id="itl-p90">--</td>
+                    <td class="latency-value" id="itl-p99">--</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <aside class="detail-panel">
+            <div class="panel-header">
+              <div>
+                <h3 class="panel-title">Runtime health</h3>
+                <div class="panel-subtitle">缓存与采集状态</div>
+              </div>
+            </div>
+            <div class="health-grid">
+              <div class="health-stat">
+                <span class="meta-label">Prefix hit rate</span>
+                <span class="health-value" id="prefix-hit-value">--</span>
+              </div>
+              <div class="health-stat">
+                <span class="meta-label">Swapped requests</span>
+                <span class="health-value" id="swapped-value">--</span>
+              </div>
+              <div class="health-stat">
+                <span class="meta-label">Last success</span>
+                <span class="health-value" id="last-success-value">--</span>
+              </div>
+              <div class="health-stat">
+                <span class="meta-label">Client poll</span>
+                <span class="health-value" id="client-poll-value">500 ms</span>
+              </div>
+            </div>
+            <div class="last-error-block">
+              <span class="meta-label">Last error</span>
+              <pre class="last-error" id="last-error-value" aria-live="polite">无</pre>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>vLLM local performance monitor</span>
+      <span>history is kept only in this browser tab</span>
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const HISTORY_WINDOW_MS = 60_000;
+      const REQUEST_TIMEOUT_MS = 5_000;
+      const ALLOWED_INTERVALS = new Set([200, 500, 1000, 2000]);
+      const COLORS = {
+        grid: "rgba(143, 168, 190, 0.12)",
+        axis: "#718597",
+        empty: "#718597",
+        green: "#51d6a2",
+        cyan: "#55c7f3",
+        blue: "#6f9cff",
+        violet: "#ae8cff",
+        amber: "#f0bd62",
+        red: "#ff7180"
+      };
+
+      const elements = {
+        dashboard: document.getElementById("dashboard"),
+        connection: document.getElementById("connection-state"),
+        connectionLabel: document.getElementById("connection-label"),
+        errorAlert: document.getElementById("error-alert"),
+        errorTitle: document.getElementById("error-title"),
+        errorMessage: document.getElementById("error-message"),
+        refreshInterval: document.getElementById("refresh-interval"),
+        pauseButton: document.getElementById("pause-button"),
+        clearButton: document.getElementById("clear-button"),
+        source: document.getElementById("source-value"),
+        model: document.getElementById("model-value"),
+        sampleTime: document.getElementById("sample-time-value"),
+        backendPoll: document.getElementById("backend-poll-value"),
+        running: document.getElementById("running-value"),
+        waiting: document.getElementById("waiting-value"),
+        generation: document.getElementById("generation-value"),
+        prompt: document.getElementById("prompt-value"),
+        kvCache: document.getElementById("kv-cache-value"),
+        requestRate: document.getElementById("request-rate-value"),
+        prefixHit: document.getElementById("prefix-hit-value"),
+        swapped: document.getElementById("swapped-value"),
+        lastSuccess: document.getElementById("last-success-value"),
+        clientPoll: document.getElementById("client-poll-value"),
+        lastError: document.getElementById("last-error-value")
+      };
+
+      const latencyCells = {};
+      for (const family of ["e2e", "ttft", "itl"]) {
+        for (const percentile of ["p50", "p90", "p99"]) {
+          latencyCells[`${family}_${percentile}`] = document.getElementById(`${family}-${percentile}`);
+        }
+      }
+
+      const state = {
+        intervalMs: restoreInterval(),
+        paused: false,
+        inFlight: false,
+        timer: null,
+        history: [],
+        currentSnapshot: null,
+        chartNow: Date.now()
+      };
+
+      function restoreInterval() {
+        try {
+          const value = Number(window.localStorage.getItem("vllm-dashboard-refresh-ms"));
+          return ALLOWED_INTERVALS.has(value) ? value : 500;
+        } catch (_error) {
+          return 500;
+        }
+      }
+
+      function persistInterval(value) {
+        try {
+          window.localStorage.setItem("vllm-dashboard-refresh-ms", String(value));
+        } catch (_error) {
+          // The dashboard remains functional when storage is disabled.
+        }
+      }
+
+      function numberAt(object, path) {
+        let value = object;
+        for (const key of path.split(".")) {
+          if (value === null || typeof value !== "object") return null;
+          value = value[key];
+        }
+        if (value === null || value === undefined || value === "") return null;
+        const numeric = typeof value === "number" ? value : Number(value);
+        return Number.isFinite(numeric) ? numeric : null;
+      }
+
+      function epochMilliseconds(value) {
+        const numeric = typeof value === "number" ? value : Number(value);
+        if (!Number.isFinite(numeric) || numeric <= 0) return null;
+        const milliseconds = numeric < 1e12 ? numeric * 1000 : numeric;
+        const date = new Date(milliseconds);
+        return Number.isNaN(date.getTime()) ? null : milliseconds;
+      }
+
+      function percentValue(value) {
+        if (!Number.isFinite(value)) return null;
+        return Math.abs(value) <= 1 ? value * 100 : value;
+      }
+
+      function formatNumber(value, maximumFractionDigits = 1) {
+        if (!Number.isFinite(value)) return "--";
+        return new Intl.NumberFormat("zh-CN", {
+          maximumFractionDigits,
+          minimumFractionDigits: 0
+        }).format(value);
+      }
+
+      function formatCount(value) {
+        return formatNumber(value, Number.isInteger(value) ? 0 : 1);
+      }
+
+      function formatRate(value) {
+        if (!Number.isFinite(value)) return "--";
+        const digits = Math.abs(value) < 10 ? 2 : Math.abs(value) < 100 ? 1 : 0;
+        return formatNumber(value, digits);
+      }
+
+      function formatPercent(value) {
+        return Number.isFinite(value) ? `${formatNumber(percentValue(value), 1)}%` : "--";
+      }
+
+      function formatDuration(seconds) {
+        if (!Number.isFinite(seconds)) return "--";
+        const absolute = Math.abs(seconds);
+        if (absolute < 0.001) return `${formatNumber(seconds * 1_000_000, 1)} μs`;
+        if (absolute < 1) return `${formatNumber(seconds * 1000, absolute < 0.01 ? 2 : 1)} ms`;
+        return `${formatNumber(seconds, absolute < 10 ? 2 : 1)} s`;
+      }
+
+      function formatTime(value, withDate = false) {
+        const milliseconds = epochMilliseconds(value);
+        if (milliseconds === null) return "--";
+        const options = {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false
+        };
+        if (withDate) {
+          options.month = "2-digit";
+          options.day = "2-digit";
+        }
+        return new Intl.DateTimeFormat("zh-CN", options).format(new Date(milliseconds));
+      }
+
+      function formatInterval(value) {
+        if (!Number.isFinite(value)) return "--";
+        return value >= 1000 && value % 1000 === 0 ? `${value / 1000} s` : `${value} ms`;
+      }
+
+      function compactAxis(value) {
+        if (!Number.isFinite(value)) return "--";
+        const absolute = Math.abs(value);
+        if (absolute >= 1_000_000) return `${formatNumber(value / 1_000_000, 1)}m`;
+        if (absolute >= 1000) return `${formatNumber(value / 1000, 1)}k`;
+        if (absolute >= 10) return formatNumber(value, 0);
+        return formatNumber(value, 1);
+      }
+
+      function normalizePayload(payload) {
+        const health = payload && typeof payload.health === "object" && payload.health !== null
+          ? payload.health
+          : {};
+
+        return {
+          ok: payload?.ok === true,
+          stale: health.stale === true,
+          timestamp: epochMilliseconds(payload?.timestamp),
+          source: typeof payload?.source === "string" && payload.source ? payload.source : null,
+          model: typeof payload?.model === "string" && payload.model ? payload.model : null,
+          backendPollMs: numberAt(payload, "poll_interval_ms"),
+          lastError: typeof health.last_error === "string" && health.last_error ? health.last_error : null,
+          lastSuccessAt: epochMilliseconds(health.last_success_at),
+          running: numberAt(payload, "requests.running"),
+          waiting: numberAt(payload, "requests.waiting"),
+          swapped: numberAt(payload, "requests.swapped"),
+          requestRate: numberAt(payload, "requests.requests_per_sec"),
+          promptRate: numberAt(payload, "tokens.prompt_tokens_per_sec"),
+          generationRate: numberAt(payload, "tokens.generation_tokens_per_sec"),
+          kvCache: numberAt(payload, "cache.kv_cache_usage"),
+          prefixHit: numberAt(payload, "cache.prefix_cache_hit_rate"),
+          latency: {
+            e2e_p50: numberAt(payload, "latency.e2e_p50"),
+            e2e_p90: numberAt(payload, "latency.e2e_p90"),
+            e2e_p99: numberAt(payload, "latency.e2e_p99"),
+            ttft_p50: numberAt(payload, "latency.ttft_p50"),
+            ttft_p90: numberAt(payload, "latency.ttft_p90"),
+            ttft_p99: numberAt(payload, "latency.ttft_p99"),
+            itl_p50: numberAt(payload, "latency.itl_p50"),
+            itl_p90: numberAt(payload, "latency.itl_p90"),
+            itl_p99: numberAt(payload, "latency.itl_p99")
+          }
+        };
+      }
+
+      function setConnection(stateName, label) {
+        elements.connection.dataset.state = stateName;
+        elements.connectionLabel.textContent = label;
+      }
+
+      function showAlert(title, message) {
+        elements.errorTitle.textContent = title;
+        elements.errorMessage.textContent = message || "未知错误";
+        elements.errorAlert.hidden = false;
+      }
+
+      function hideAlert() {
+        elements.errorAlert.hidden = true;
+        elements.errorMessage.textContent = "";
+      }
+
+      function setLastError(message) {
+        elements.lastError.textContent = message || "无";
+        elements.lastError.classList.toggle("has-error", Boolean(message));
+      }
+
+      function renderSnapshot(snapshot) {
+        state.currentSnapshot = snapshot;
+        const unhealthy = !snapshot.ok || snapshot.stale;
+        elements.dashboard.classList.toggle("is-stale", unhealthy);
+
+        if (snapshot.stale && snapshot.lastSuccessAt !== null) {
+          setConnection("warning", "数据已陈旧");
+          showAlert("指标数据已陈旧", snapshot.lastError || "当前展示的是最近一次成功采集的数据。页面会继续自动重试。");
+        } else if (!snapshot.ok) {
+          setConnection("offline", "vLLM 离线");
+          showAlert("vLLM 指标不可用", snapshot.lastError || "后端暂时无法从 vLLM 获取指标。页面会继续自动重试。");
+        } else {
+          setConnection("online", "vLLM 在线");
+          hideAlert();
+        }
+
+        elements.source.textContent = snapshot.source || "--";
+        elements.source.title = snapshot.source || "--";
+        elements.model.textContent = snapshot.model || "--";
+        elements.model.title = snapshot.model || "--";
+        elements.sampleTime.textContent = snapshot.timestamp === null ? "--" : formatTime(snapshot.timestamp / 1000, true);
+        elements.backendPoll.textContent = formatInterval(snapshot.backendPollMs);
+
+        elements.running.textContent = formatCount(snapshot.running);
+        elements.waiting.textContent = formatCount(snapshot.waiting);
+        elements.generation.textContent = formatRate(snapshot.generationRate);
+        elements.prompt.textContent = formatRate(snapshot.promptRate);
+        elements.kvCache.textContent = Number.isFinite(snapshot.kvCache)
+          ? formatNumber(percentValue(snapshot.kvCache), 1)
+          : "--";
+        elements.requestRate.textContent = formatRate(snapshot.requestRate);
+
+        elements.prefixHit.textContent = formatPercent(snapshot.prefixHit);
+        elements.swapped.textContent = formatCount(snapshot.swapped);
+        elements.lastSuccess.textContent = snapshot.lastSuccessAt === null
+          ? "--"
+          : formatTime(snapshot.lastSuccessAt / 1000);
+        setLastError(snapshot.lastError);
+
+        for (const [key, cell] of Object.entries(latencyCells)) {
+          cell.textContent = formatDuration(snapshot.latency[key]);
+        }
+
+        if (!state.paused) {
+          recordSnapshot(snapshot);
+        }
+      }
+
+      function renderTransportError(error) {
+        const message = error instanceof Error ? error.message : String(error || "未知错误");
+        elements.dashboard.classList.add("is-stale");
+        setConnection("offline", "后端不可达");
+        showAlert("仪表盘后端不可达", `${message}。页面会继续自动重试。`);
+        setLastError(message);
+
+        if (!state.paused) {
+          recordGap(Date.now());
+        }
+      }
+
+      function snapshotPoint(snapshot, timestamp, forceGap = false) {
+        const hasFreshData = snapshot && snapshot.ok && !snapshot.stale && !forceGap;
+        return {
+          t: timestamp,
+          generation: hasFreshData ? snapshot.generationRate : null,
+          prompt: hasFreshData ? snapshot.promptRate : null,
+          running: hasFreshData ? snapshot.running : null,
+          waiting: hasFreshData ? snapshot.waiting : null,
+          kv: hasFreshData ? percentValue(snapshot.kvCache) : null,
+          e2e50: hasFreshData && Number.isFinite(snapshot.latency.e2e_p50) ? snapshot.latency.e2e_p50 * 1000 : null,
+          e2e90: hasFreshData && Number.isFinite(snapshot.latency.e2e_p90) ? snapshot.latency.e2e_p90 * 1000 : null,
+          e2e99: hasFreshData && Number.isFinite(snapshot.latency.e2e_p99) ? snapshot.latency.e2e_p99 * 1000 : null
+        };
+      }
+
+      function appendPoint(point) {
+        const last = state.history[state.history.length - 1];
+        if (last && point.t === last.t) {
+          state.history[state.history.length - 1] = point;
+        } else {
+          if (last && point.t < last.t) point.t = Date.now();
+          state.history.push(point);
+        }
+
+        const cutoff = point.t - HISTORY_WINDOW_MS - 5_000;
+        while (state.history.length && state.history[0].t < cutoff) {
+          state.history.shift();
+        }
+
+        state.chartNow = point.t;
+        renderCharts();
+      }
+
+      function recordSnapshot(snapshot) {
+        const timestamp = snapshot.ok && !snapshot.stale && snapshot.timestamp !== null
+          ? snapshot.timestamp
+          : Date.now();
+        appendPoint(snapshotPoint(snapshot, timestamp));
+      }
+
+      function recordGap(timestamp) {
+        appendPoint(snapshotPoint(null, timestamp, true));
+      }
+
+      class TrendChart {
+        constructor(canvas, configuration) {
+          this.canvas = canvas;
+          this.context = canvas.getContext("2d");
+          this.series = configuration.series;
+          this.fixedMin = configuration.min;
+          this.fixedMax = configuration.max;
+          this.axisFormatter = configuration.axisFormatter || compactAxis;
+          this.width = 0;
+          this.height = 0;
+        }
+
+        resize() {
+          const rectangle = this.canvas.getBoundingClientRect();
+          if (rectangle.width <= 0 || rectangle.height <= 0) return;
+          const ratio = Math.min(window.devicePixelRatio || 1, 2);
+          this.width = rectangle.width;
+          this.height = rectangle.height;
+          const pixelWidth = Math.round(rectangle.width * ratio);
+          const pixelHeight = Math.round(rectangle.height * ratio);
+          if (this.canvas.width !== pixelWidth || this.canvas.height !== pixelHeight) {
+            this.canvas.width = pixelWidth;
+            this.canvas.height = pixelHeight;
+          }
+          this.context.setTransform(ratio, 0, 0, ratio, 0, 0);
+          this.draw(state.history, state.chartNow);
+        }
+
+        draw(history, now) {
+          if (!this.context || !this.width || !this.height) return;
+          const context = this.context;
+          const width = this.width;
+          const height = this.height;
+          const margin = { top: 12, right: 12, bottom: 27, left: 51 };
+          const plotWidth = Math.max(1, width - margin.left - margin.right);
+          const plotHeight = Math.max(1, height - margin.top - margin.bottom);
+          const start = now - HISTORY_WINDOW_MS;
+          const visible = history.filter(point => point.t >= start && point.t <= now + 1000);
+          const values = [];
+
+          for (const point of visible) {
+            for (const series of this.series) {
+              const value = point[series.key];
+              if (Number.isFinite(value)) values.push(value);
+            }
+          }
+
+          let minimum = Number.isFinite(this.fixedMin) ? this.fixedMin : 0;
+          let maximum = Number.isFinite(this.fixedMax) ? this.fixedMax : niceMaximum(values.length ? Math.max(...values) : 1);
+          if (maximum <= minimum) maximum = minimum + 1;
+
+          context.clearRect(0, 0, width, height);
+          context.save();
+          context.font = `10px ${getComputedStyle(document.documentElement).getPropertyValue("--mono")}`;
+          context.lineWidth = 1;
+          context.textBaseline = "middle";
+
+          for (let index = 0; index <= 4; index += 1) {
+            const ratio = index / 4;
+            const y = margin.top + plotHeight * ratio;
+            const value = maximum - (maximum - minimum) * ratio;
+            context.beginPath();
+            context.strokeStyle = COLORS.grid;
+            context.moveTo(margin.left, Math.round(y) + 0.5);
+            context.lineTo(width - margin.right, Math.round(y) + 0.5);
+            context.stroke();
+            context.fillStyle = COLORS.axis;
+            context.textAlign = "right";
+            context.fillText(this.axisFormatter(value), margin.left - 8, y);
+          }
+
+          for (let index = 0; index <= 4; index += 1) {
+            const ratio = index / 4;
+            const x = margin.left + plotWidth * ratio;
+            context.beginPath();
+            context.strokeStyle = COLORS.grid;
+            context.moveTo(Math.round(x) + 0.5, margin.top);
+            context.lineTo(Math.round(x) + 0.5, height - margin.bottom);
+            context.stroke();
+            context.fillStyle = COLORS.axis;
+            context.textAlign = index === 0 ? "left" : index === 4 ? "right" : "center";
+            context.textBaseline = "bottom";
+            context.fillText(index === 4 ? "现在" : `-${60 - index * 15}s`, x, height - 4);
+          }
+
+          const xForTime = timestamp => margin.left + ((timestamp - start) / HISTORY_WINDOW_MS) * plotWidth;
+          const yForValue = value => margin.top + (1 - (value - minimum) / (maximum - minimum)) * plotHeight;
+
+          context.save();
+          context.beginPath();
+          context.rect(margin.left, margin.top, plotWidth, plotHeight);
+          context.clip();
+
+          for (const series of this.series) {
+            context.beginPath();
+            context.strokeStyle = series.color;
+            context.lineWidth = 2;
+            context.lineJoin = "round";
+            context.lineCap = "round";
+            let drawing = false;
+            let pointCount = 0;
+            let onlyPoint = null;
+
+            for (const point of visible) {
+              const value = point[series.key];
+              if (!Number.isFinite(value)) {
+                drawing = false;
+                continue;
+              }
+              const x = xForTime(point.t);
+              const y = yForValue(value);
+              if (!drawing) {
+                context.moveTo(x, y);
+                drawing = true;
+              } else {
+                context.lineTo(x, y);
+              }
+              pointCount += 1;
+              onlyPoint = { x, y };
+            }
+            context.stroke();
+
+            if (pointCount === 1 && onlyPoint) {
+              context.beginPath();
+              context.fillStyle = series.color;
+              context.arc(onlyPoint.x, onlyPoint.y, 2.6, 0, Math.PI * 2);
+              context.fill();
+            }
+          }
+          context.restore();
+
+          if (!values.length) {
+            context.fillStyle = COLORS.empty;
+            context.font = `11px ${getComputedStyle(document.documentElement).getPropertyValue("--sans")}`;
+            context.textAlign = "center";
+            context.textBaseline = "middle";
+            context.fillText("等待有效指标样本", margin.left + plotWidth / 2, margin.top + plotHeight / 2);
+          }
+
+          context.restore();
+        }
+      }
+
+      function niceMaximum(value) {
+        if (!Number.isFinite(value) || value <= 0) return 1;
+        const padded = value * 1.12;
+        const exponent = Math.floor(Math.log10(padded));
+        const magnitude = 10 ** exponent;
+        const normalized = padded / magnitude;
+        const nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+        return nice * magnitude;
+      }
+
+      const charts = [
+        new TrendChart(document.getElementById("tokens-chart"), {
+          series: [
+            { key: "generation", color: COLORS.cyan },
+            { key: "prompt", color: COLORS.blue }
+          ],
+          min: 0,
+          axisFormatter: compactAxis
+        }),
+        new TrendChart(document.getElementById("requests-chart"), {
+          series: [
+            { key: "running", color: COLORS.green },
+            { key: "waiting", color: COLORS.amber }
+          ],
+          min: 0,
+          axisFormatter: compactAxis
+        }),
+        new TrendChart(document.getElementById("cache-chart"), {
+          series: [{ key: "kv", color: COLORS.violet }],
+          min: 0,
+          max: 100,
+          axisFormatter: value => `${formatNumber(value, 0)}%`
+        }),
+        new TrendChart(document.getElementById("latency-chart"), {
+          series: [
+            { key: "e2e50", color: COLORS.green },
+            { key: "e2e90", color: COLORS.amber },
+            { key: "e2e99", color: COLORS.red }
+          ],
+          min: 0,
+          axisFormatter: value => `${compactAxis(value)}ms`
+        })
+      ];
+
+      function renderCharts() {
+        for (const chart of charts) {
+          chart.draw(state.history, state.chartNow);
+        }
+      }
+
+      function resizeCharts() {
+        for (const chart of charts) chart.resize();
+      }
+
+      async function fetchMetrics() {
+        if (state.inFlight) return;
+        state.inFlight = true;
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+        try {
+          const response = await window.fetch("/api/metrics", {
+            method: "GET",
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+            signal: controller.signal
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
+          const payload = await response.json();
+          if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
+            throw new Error("/api/metrics 返回了无效 JSON");
+          }
+          renderSnapshot(normalizePayload(payload));
+        } catch (error) {
+          const normalizedError = error?.name === "AbortError"
+            ? new Error(`请求超过 ${REQUEST_TIMEOUT_MS / 1000} 秒未响应`)
+            : error;
+          renderTransportError(normalizedError);
+        } finally {
+          window.clearTimeout(timeout);
+          state.inFlight = false;
+          scheduleNextPoll();
+        }
+      }
+
+      function scheduleNextPoll() {
+        window.clearTimeout(state.timer);
+        state.timer = window.setTimeout(fetchMetrics, state.intervalMs);
+      }
+
+      function updatePauseState() {
+        elements.dashboard.classList.toggle("is-paused", state.paused);
+        elements.pauseButton.setAttribute("aria-pressed", String(state.paused));
+        elements.pauseButton.textContent = state.paused ? "恢复图表" : "暂停图表";
+        if (!state.paused && state.currentSnapshot) {
+          recordSnapshot(state.currentSnapshot);
+        } else {
+          renderCharts();
+        }
+      }
+
+      elements.refreshInterval.value = String(state.intervalMs);
+      elements.clientPoll.textContent = formatInterval(state.intervalMs);
+
+      elements.refreshInterval.addEventListener("change", () => {
+        const selected = Number(elements.refreshInterval.value);
+        state.intervalMs = ALLOWED_INTERVALS.has(selected) ? selected : 500;
+        elements.refreshInterval.value = String(state.intervalMs);
+        elements.clientPoll.textContent = formatInterval(state.intervalMs);
+        persistInterval(state.intervalMs);
+        window.clearTimeout(state.timer);
+        if (!state.inFlight) fetchMetrics();
+      });
+
+      elements.pauseButton.addEventListener("click", () => {
+        state.paused = !state.paused;
+        if (state.paused) state.chartNow = Date.now();
+        updatePauseState();
+      });
+
+      elements.clearButton.addEventListener("click", () => {
+        state.history.length = 0;
+        state.chartNow = Date.now();
+        renderCharts();
+        const original = elements.clearButton.textContent;
+        elements.clearButton.textContent = "已清空";
+        window.setTimeout(() => {
+          elements.clearButton.textContent = original;
+        }, 900);
+      });
+
+      if ("ResizeObserver" in window) {
+        const resizeObserver = new ResizeObserver(() => resizeCharts());
+        for (const chart of charts) resizeObserver.observe(chart.canvas);
+      } else {
+        window.addEventListener("resize", resizeCharts, { passive: true });
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+          resizeCharts();
+          window.clearTimeout(state.timer);
+          if (!state.inFlight) fetchMetrics();
+        }
+      });
+
+      requestAnimationFrame(() => {
+        resizeCharts();
+        fetchMetrics();
+      });
+    })();
+  </script>
+</body>
+</html>
