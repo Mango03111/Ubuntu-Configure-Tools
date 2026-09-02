@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Lightweight real-time dashboard backend for vLLM Prometheus metrics."""
 
 from __future__ import annotations
 
@@ -20,6 +19,24 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable, Iterable, Mapping, Sequence
+
+from usage_stats import UsageStatsPlugin
+
+# ---------------------------------------------------------------------------
+# Easily adjustable defaults. Environment variables override these values.
+# ---------------------------------------------------------------------------
+DEFAULT_METRICS_URL = "http://127.0.0.1:8000/metrics"
+DEFAULT_SERVER_HOST = "127.0.0.1"
+DEFAULT_SERVER_PORT = 8090
+DEFAULT_POLL_INTERVAL_MS = 500.0
+DEFAULT_FETCH_TIMEOUT_SECONDS = 5.0
+DEFAULT_RATE_WINDOW_SECONDS = 5.0
+DEFAULT_LATENCY_WINDOW_SECONDS = 30.0
+DEFAULT_ENABLE_RAW_API = False
+DEFAULT_ENABLE_USAGE_STATS = True
+DEFAULT_USAGE_WRITE_INTERVAL_SECONDS = 60.0
+DEFAULT_USAGE_DATA_DIR = "usage_data/"
+DEFAULT_USAGE_PRICING_FILE = "pricing.yaml"
 
 
 _SAMPLE_NAME_RE = re.compile(r"[a-zA-Z_:][a-zA-Z0-9_:]*")
@@ -46,26 +63,30 @@ class Config:
     latency_window_seconds: float
     stale_after_seconds: float
     enable_raw_api: bool
+    enable_usage_stats: bool
+    usage_write_interval_seconds: float
+    usage_data_dir: Path
+    usage_pricing_file: Path
 
     @classmethod
     def from_env(cls) -> "Config":
-        poll_ms = _env_float("POLL_INTERVAL_MS", 500.0, minimum=100.0, maximum=60_000.0)
+        poll_ms = _env_float("POLL_INTERVAL_MS", DEFAULT_POLL_INTERVAL_MS, minimum=100.0, maximum=60_000.0)
         poll_seconds = poll_ms / 1000.0
         return cls(
             metrics_url=os.getenv(
-                "VLLM_METRICS_URL", "http://127.0.0.1:8000/metrics"
+                "VLLM_METRICS_URL", DEFAULT_METRICS_URL
             ),
-            host=os.getenv("SERVER_HOST", "127.0.0.1"),
-            port=_env_int("SERVER_PORT", 8090, minimum=1, maximum=65_535),
+            host=os.getenv("SERVER_HOST", DEFAULT_SERVER_HOST),
+            port=_env_int("SERVER_PORT", DEFAULT_SERVER_PORT, minimum=1, maximum=65_535),
             poll_interval_seconds=poll_seconds,
             fetch_timeout_seconds=_env_float(
-                "FETCH_TIMEOUT_SECONDS", 5.0, minimum=0.1, maximum=120.0
+                "FETCH_TIMEOUT_SECONDS", DEFAULT_FETCH_TIMEOUT_SECONDS, minimum=0.1, maximum=120.0
             ),
             rate_window_seconds=_env_float(
-                "RATE_WINDOW_SECONDS", 5.0, minimum=poll_seconds, maximum=300.0
+                "RATE_WINDOW_SECONDS", DEFAULT_RATE_WINDOW_SECONDS, minimum=poll_seconds, maximum=300.0
             ),
             latency_window_seconds=_env_float(
-                "LATENCY_WINDOW_SECONDS", 30.0, minimum=poll_seconds, maximum=900.0
+                "LATENCY_WINDOW_SECONDS", DEFAULT_LATENCY_WINDOW_SECONDS, minimum=poll_seconds, maximum=900.0
             ),
             stale_after_seconds=_env_float(
                 "STALE_AFTER_SECONDS",
@@ -73,7 +94,11 @@ class Config:
                 minimum=poll_seconds,
                 maximum=900.0,
             ),
-            enable_raw_api=_env_bool("ENABLE_RAW_API", False),
+            enable_raw_api=_env_bool("ENABLE_RAW_API", DEFAULT_ENABLE_RAW_API),
+            enable_usage_stats=_env_bool("ENABLE_USAGE_STATS", DEFAULT_ENABLE_USAGE_STATS),
+            usage_write_interval_seconds=_env_float("USAGE_WRITE_INTERVAL_SECONDS", DEFAULT_USAGE_WRITE_INTERVAL_SECONDS, minimum=1.0, maximum=86400.0),
+            usage_data_dir=Path(os.getenv("USAGE_DATA_DIR", DEFAULT_USAGE_DATA_DIR)),
+            usage_pricing_file=Path(os.getenv("USAGE_PRICING_FILE", DEFAULT_USAGE_PRICING_FILE)),
         )
 
 
@@ -439,11 +464,15 @@ class MetricsCollector:
         self._last_success_at: float | None = None
         self._last_error: str | None = None
         self._consecutive_failures = 0
+        self._display_history: deque[dict[str, object]] = deque(maxlen=720)
+        self.usage = UsageStatsPlugin(config.usage_data_dir, config.usage_pricing_file, config.usage_write_interval_seconds) if config.enable_usage_stats else None
 
     def start(self) -> None:
         if self._thread is not None and self._thread.is_alive():
             return
         self._stop_event.clear()
+        if self.usage:
+            self.usage.start()
         self._thread = threading.Thread(
             target=self._run, name="vllm-metrics-poller", daemon=True
         )
@@ -453,6 +482,8 @@ class MetricsCollector:
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=self.config.fetch_timeout_seconds + 1.0)
+        if self.usage:
+            self.usage.stop()
 
     def _run(self) -> None:
         while not self._stop_event.is_set():
@@ -482,6 +513,19 @@ class MetricsCollector:
                 self._last_success_at = attempted_at
                 self._last_error = None
                 self._consecutive_failures = 0
+                self._display_history.append({
+                    "timestamp": attempted_at,
+                    "generation": payload["tokens"]["generation_tokens_per_sec"],
+                    "prompt": payload["tokens"]["prompt_tokens_per_sec"],
+                    "running": payload["requests"]["running"],
+                    "waiting": payload["requests"]["waiting"],
+                    "kv": payload["cache"]["kv_cache_usage"],
+                    "e2e_p50": payload["latency"]["e2e_p50"],
+                    "e2e_p90": payload["latency"]["e2e_p90"],
+                    "e2e_p99": payload["latency"]["e2e_p99"],
+                })
+            if self.usage:
+                self.usage.update(self.snapshot())
             return self.snapshot()
 
     def _fetch_metrics(self) -> str:
@@ -771,6 +815,7 @@ class MetricsCollector:
             "stale_after_seconds": self.config.stale_after_seconds,
             "consecutive_failures": failures,
         }
+        payload["history"] = list(self._display_history)
         return payload
 
     def raw_metrics(self) -> str:
@@ -920,6 +965,13 @@ def make_handler(
                     cache_control="no-store",
                 )
                 return
+            if path in {"/api/usage", "/api/usage/history", "/api/usage/health"}:
+                if collector.usage is None:
+                    self._send_json({"ok": False, "error": "usage statistics are disabled"}, status=404)
+                    return
+                usage_payload = collector.usage.api_payload()
+                self._send_json(usage_payload if path == "/api/usage" else ({"ok": usage_payload["ok"], "history": usage_payload["history"]} if path.endswith("/history") else {"ok": usage_payload["ok"], "usage": {"last_error": usage_payload["usage"]["last_error"], "last_write_at": usage_payload["usage"]["last_write_at"]}}))
+                return
             if path in {"/", "/index.html"}:
                 try:
                     body = index_path.read_bytes()
@@ -934,6 +986,15 @@ def make_handler(
                     "text/html; charset=utf-8",
                     cache_control="no-cache",
                 )
+                return
+            if path == "/usage.html":
+                usage_path = index_path.with_name("usage.html")
+                try:
+                    body = usage_path.read_bytes()
+                except OSError as exc:
+                    self._send_json({"ok": False, "error": f"cannot read usage.html: {exc}"}, status=500)
+                    return
+                self._send_bytes(body, "text/html; charset=utf-8", cache_control="no-cache")
                 return
             if path == "/favicon.ico":
                 self.send_response(204)

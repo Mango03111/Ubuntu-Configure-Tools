@@ -353,6 +353,21 @@
       white-space: nowrap;
     }
 
+    #model-value {
+      text-overflow: clip;
+    }
+
+    #model-value.model-scroll {
+      width: max-content;
+      animation: model-marquee 6s linear infinite;
+      transform: translateX(0);
+    }
+
+    @keyframes model-marquee {
+      from { transform: translateX(var(--model-start, 100%)); }
+      to { transform: translateX(var(--model-end, -100%)); }
+    }
+
     main {
       padding-top: 22px;
     }
@@ -902,7 +917,7 @@
       min-width: 0;
       height: 100%;
       margin: 0;
-      grid-template-columns: minmax(120px, 1.45fr) minmax(80px, 0.8fr) minmax(105px, 0.9fr) minmax(76px, 0.65fr);
+        grid-template-columns: minmax(120px, 1.45fr) minmax(80px, 0.8fr) minmax(105px, 0.9fr) minmax(76px, 0.65fr);
       gap: 0;
       overflow: hidden;
       border: 0;
@@ -1479,6 +1494,7 @@
         <div class="brand-copy">
           <p class="eyebrow">Local telemetry</p>
           <h1>vLLM Performance Console</h1>
+          <a href="/usage.html" style="color:var(--cyan);font-size:12px">用量统计</a>
         </div>
         <div class="connection-state" id="connection-state" data-state="connecting" role="status" aria-live="polite">
           <span class="status-dot" aria-hidden="true"></span>
@@ -1828,6 +1844,8 @@
         currentSnapshot: null,
         chartNow: Date.now()
       };
+      let modelScrollText = null;
+      let modelScrollWidth = null;
 
       function restoreInterval() {
         try {
@@ -1935,6 +1953,18 @@
           ? payload.health
           : {};
 
+        const history = Array.isArray(payload?.history) ? payload.history.map(point => ({
+          t: epochMilliseconds(point?.timestamp),
+          generation: numberAt(point, "generation"),
+          prompt: numberAt(point, "prompt"),
+          running: numberAt(point, "running"),
+          waiting: numberAt(point, "waiting"),
+          kv: percentValue(numberAt(point, "kv")),
+          e2e50: Number.isFinite(numberAt(point, "e2e_p50")) ? numberAt(point, "e2e_p50") * 1000 : null,
+          e2e90: Number.isFinite(numberAt(point, "e2e_p90")) ? numberAt(point, "e2e_p90") * 1000 : null,
+          e2e99: Number.isFinite(numberAt(point, "e2e_p99")) ? numberAt(point, "e2e_p99") * 1000 : null
+        })).filter(point => Number.isFinite(point.t)) : [];
+
         return {
           ok: payload?.ok === true,
           stale: health.stale === true,
@@ -1944,6 +1974,7 @@
           backendPollMs: numberAt(payload, "poll_interval_ms"),
           lastError: typeof health.last_error === "string" && health.last_error ? health.last_error : null,
           lastSuccessAt: epochMilliseconds(health.last_success_at),
+          history,
           running: numberAt(payload, "requests.running"),
           waiting: numberAt(payload, "requests.waiting"),
           swapped: numberAt(payload, "requests.swapped"),
@@ -1994,8 +2025,31 @@
         elements.lastError.classList.toggle("has-error", Boolean(message));
       }
 
+      function updateModelScroll() {
+        const element = elements.model;
+        if (!element) return;
+        const text = element.textContent || "";
+        const containerWidth = element.parentElement ? element.parentElement.clientWidth : element.clientWidth;
+        if (text === modelScrollText && containerWidth === modelScrollWidth) return;
+        modelScrollText = text;
+        modelScrollWidth = containerWidth;
+        element.classList.remove("model-scroll");
+        element.style.removeProperty("--model-start");
+        element.style.removeProperty("--model-end");
+        element.style.removeProperty("--model-overflow");
+        if (element.scrollWidth > element.clientWidth) {
+          element.style.setProperty("--model-start", `${containerWidth}px`);
+          element.style.setProperty("--model-end", `${-element.scrollWidth}px`);
+          element.classList.add("model-scroll");
+        }
+      }
+
       function renderSnapshot(snapshot) {
         state.currentSnapshot = snapshot;
+        if (state.history.length === 0 && snapshot.history.length > 0) {
+          state.history = snapshot.history;
+          state.chartNow = snapshot.history[snapshot.history.length - 1].t;
+        }
         const unhealthy = !snapshot.ok || snapshot.stale;
         elements.dashboard.classList.toggle("is-stale", unhealthy);
 
@@ -2014,6 +2068,7 @@
         elements.source.title = snapshot.source || "--";
         elements.model.textContent = snapshot.model || "--";
         elements.model.title = snapshot.model || "--";
+        updateModelScroll();
         elements.sampleTime.textContent = snapshot.timestamp === null ? "--" : formatTime(snapshot.timestamp / 1000, true);
         elements.backendPoll.textContent = formatInterval(snapshot.backendPollMs);
 
@@ -2293,6 +2348,7 @@
 
       function resizeCharts() {
         for (const chart of charts) chart.resize();
+        updateModelScroll();
       }
 
       async function fetchMetrics() {

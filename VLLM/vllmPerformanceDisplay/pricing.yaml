@@ -1,0 +1,16 @@
+# Prices are USD per 1 million tokens (Alibaba Cloud Model Studio list price).
+# Current FP8 container served model: qwen38-27b-fp8 (Qwen3.8-27B).
+# China (Beijing): input 0.424, output 1.696.
+models:
+  qwen38-27b-fp8:
+    input_price_per_1m_tokens: 0.424
+    output_price_per_1m_tokens: 1.696
+    currency: USD
+  qwen3.8-27b:
+    input_price_per_1m_tokens: 0.424
+    output_price_per_1m_tokens: 1.696
+    currency: USD
+  default:
+    input_price_per_1m_tokens: 0
+    output_price_per_1m_tokens: 0
+    currency: USD

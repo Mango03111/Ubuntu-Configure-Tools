@@ -15,3 +15,6 @@ venv/
 *.log
 *.pid
 .DS_Store
+
+# Runtime usage exports (keep the directory itself available in deployments).
+usage_data/*.csv

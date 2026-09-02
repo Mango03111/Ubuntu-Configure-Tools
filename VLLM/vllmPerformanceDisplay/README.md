@@ -82,6 +82,14 @@ python3 server.py
 | `STALE_AFTER_SECONDS` | `max(3, 4 × 抓取间隔)` | 超过此时长未成功抓取即标记 stale |
 | `ENABLE_RAW_API` | `false` | 设为 `true`/`1` 后开放 `/api/raw` |
 
+用量统计插件默认关闭。当前 FP8 容器使用 `qwen38-27b-fp8`、端口 `8000`。
+启用方式：`ENABLE_USAGE_STATS=true python3 server.py`，然后访问 `/usage.html`。
+CSV 写入 `usage_data/`，写入间隔可用 `USAGE_WRITE_INTERVAL_SECONDS` 调整，价格文件可用
+`USAGE_PRICING_FILE` 指定。
+
+用量 CSV 每行代表上一写入周期内的新增用量；网页顶部显示进程运行期间累计值，
+下方趋势图显示各写入周期的增量。
+
 前端读取的是后端内存快照，不会因多个浏览器页面而成倍抓取 vLLM。通常无需
 把 `POLL_INTERVAL_MS` 调到 200ms 以下。
 
