@@ -11,8 +11,8 @@
       --border: #294052;
       --text: #e7f0f7;
       --muted: #8da1b2;
-      --cyan: #55c7f3;
-      --green: #51d6a2;
+      --cyan: #71bad6;
+      --green: #67c19d;
     }
 
     * {
@@ -349,8 +349,8 @@
 
         // Data series, each scaled by its own axis maximum.
         const series = [
-          ["input_tokens", "#55c7f3", maxIn],
-          ["output_tokens", "#51d6a2", maxOut]
+          ["input_tokens", "#71bad6", maxIn],
+          ["output_tokens", "#67c19d", maxOut]
         ];
         for (const [key, color, max] of series) {
           x.strokeStyle = color;

@@ -17,12 +17,13 @@
       --text: #e7f0f7;
       --muted: #8396a8;
       --muted-strong: #a6b7c6;
-      --green: #51d6a2;
-      --green-soft: rgba(81, 214, 162, 0.12);
-      --cyan: #55c7f3;
-      --blue: #6f9cff;
-      --violet: #ae8cff;
-      --amber: #f0bd62;
+      --green: #67c19d;
+      --green-soft: rgba(103, 193, 157, 0.12);
+      --cyan: #71bad6;
+      --blue: #8aa6e6;
+      --violet: #b39de7;
+      --amber: #d8b678;
+      --orange: #ca7a49;
       --red: #ff7180;
       --red-soft: rgba(255, 113, 128, 0.11);
       --shadow: 0 18px 52px rgba(0, 0, 0, 0.26);
@@ -100,12 +101,12 @@
       flex: 0 0 auto;
       width: 38px;
       height: 38px;
-      border: 1px solid rgba(85, 199, 243, 0.35);
+      border: 1px solid rgba(113, 186, 214, 0.35);
       border-radius: 10px;
       background:
-        linear-gradient(135deg, rgba(85, 199, 243, 0.22), rgba(111, 156, 255, 0.05)),
+        linear-gradient(135deg, rgba(113, 186, 214, 0.22), rgba(138, 166, 230, 0.05)),
         var(--panel-strong);
-      box-shadow: inset 0 0 18px rgba(85, 199, 243, 0.08);
+      box-shadow: inset 0 0 18px rgba(113, 186, 214, 0.08);
     }
 
     .brand-mark::before,
@@ -114,7 +115,7 @@
       content: "";
       border-radius: 50%;
       background: var(--cyan);
-      box-shadow: 0 0 10px rgba(85, 199, 243, 0.7);
+      box-shadow: 0 0 10px rgba(113, 186, 214, 0.7);
     }
 
     .brand-mark::before {
@@ -181,24 +182,24 @@
 
     .connection-state[data-state="online"] {
       color: var(--green);
-      border-color: rgba(81, 214, 162, 0.25);
+      border-color: rgba(103, 193, 157, 0.25);
       background: var(--green-soft);
     }
 
     .connection-state[data-state="online"] .status-dot {
       background: var(--green);
-      box-shadow: 0 0 0 4px rgba(81, 214, 162, 0.1), 0 0 12px rgba(81, 214, 162, 0.55);
+      box-shadow: 0 0 0 4px rgba(103, 193, 157, 0.1), 0 0 12px rgba(103, 193, 157, 0.55);
     }
 
     .connection-state[data-state="warning"] {
       color: var(--amber);
-      border-color: rgba(240, 189, 98, 0.25);
-      background: rgba(240, 189, 98, 0.09);
+      border-color: rgba(216, 182, 120, 0.25);
+      background: rgba(216, 182, 120, 0.09);
     }
 
     .connection-state[data-state="warning"] .status-dot {
       background: var(--amber);
-      box-shadow: 0 0 0 4px rgba(240, 189, 98, 0.1);
+      box-shadow: 0 0 0 4px rgba(216, 182, 120, 0.1);
     }
 
     .connection-state[data-state="offline"] {
@@ -270,8 +271,8 @@
 
     .toolbar-button[aria-pressed="true"] {
       color: var(--amber);
-      border-color: rgba(240, 189, 98, 0.28);
-      background: rgba(240, 189, 98, 0.09);
+      border-color: rgba(216, 182, 120, 0.28);
+      background: rgba(216, 182, 120, 0.09);
     }
 
     .alert {
@@ -485,7 +486,7 @@
 
     .dashboard.is-stale .metric-card,
     .dashboard.is-stale .chart-panel {
-      border-color: rgba(240, 189, 98, 0.16);
+      border-color: rgba(216, 182, 120, 0.16);
     }
 
     .chart-section {
@@ -1253,7 +1254,7 @@
     }
 
     .dashboard.is-stale .detail-panel {
-      border-color: rgba(240, 189, 98, 0.16);
+      border-color: rgba(216, 182, 120, 0.16);
     }
 
     @media (max-width: 1440px) and (min-width: 1180px) {
@@ -1620,7 +1621,7 @@
             <div class="panel-header">
               <div>
                 <h3 class="panel-title">Token throughput</h3>
-                <div class="panel-subtitle">每秒处理 token 数</div>
+                <div class="panel-subtitle">左轴 Generation · 右轴 Prompt（tok/s）</div>
               </div>
               <div class="legend" aria-hidden="true">
                 <span class="legend-item"><i class="legend-dot" style="--series-color: var(--cyan)"></i>Generation</span>
@@ -1636,7 +1637,7 @@
             <div class="panel-header">
               <div>
                 <h3 class="panel-title">Request concurrency</h3>
-                <div class="panel-subtitle">运行中与排队请求</div>
+                <div class="panel-subtitle">左轴 Running · 右轴 Waiting（req）</div>
               </div>
               <div class="legend" aria-hidden="true">
                 <span class="legend-item"><i class="legend-dot" style="--series-color: var(--green)"></i>Running</span>
@@ -1652,7 +1653,7 @@
             <div class="panel-header">
               <div>
                 <h3 class="panel-title">KV cache pressure</h3>
-                <div class="panel-subtitle">缓存使用率</div>
+                <div class="panel-subtitle">缓存使用率（%）</div>
               </div>
               <div class="legend" aria-hidden="true">
                 <span class="legend-item"><i class="legend-dot" style="--series-color: var(--violet)"></i>Usage</span>
@@ -1667,12 +1668,12 @@
             <div class="panel-header">
               <div>
                 <h3 class="panel-title">End-to-end latency</h3>
-                <div class="panel-subtitle">请求延迟分位数 · 毫秒</div>
+                <div class="panel-subtitle">左轴 p50/p90 · 右轴 p99（ms）</div>
               </div>
               <div class="legend" aria-hidden="true">
                 <span class="legend-item"><i class="legend-dot" style="--series-color: var(--green)"></i>p50</span>
                 <span class="legend-item"><i class="legend-dot" style="--series-color: var(--amber)"></i>p90</span>
-                <span class="legend-item"><i class="legend-dot" style="--series-color: var(--red)"></i>p99</span>
+                <span class="legend-item"><i class="legend-dot" style="--series-color: var(--orange)"></i>p99</span>
               </div>
             </div>
             <div class="chart-wrap">
@@ -1793,11 +1794,12 @@
         grid: "rgba(143, 168, 190, 0.12)",
         axis: "#718597",
         empty: "#718597",
-        green: "#51d6a2",
-        cyan: "#55c7f3",
-        blue: "#6f9cff",
-        violet: "#ae8cff",
-        amber: "#f0bd62",
+        green: "#67c19d",
+        cyan: "#71bad6",
+        blue: "#8aa6e6",
+        violet: "#b39de7",
+        amber: "#d8b678",
+        orange: "#ca7a49",
         red: "#ff7180"
       };
 
@@ -2186,23 +2188,18 @@
           const context = this.context;
           const width = this.width;
           const height = this.height;
-          const margin = { top: 12, right: 12, bottom: 27, left: 51 };
+          const margin = { top: 12, right: 50, bottom: 27, left: 51 };
           const plotWidth = Math.max(1, width - margin.left - margin.right);
           const plotHeight = Math.max(1, height - margin.top - margin.bottom);
+          const plotRight = width - margin.right;
           const start = now - HISTORY_WINDOW_MS;
           const visible = history.filter(point => point.t >= start && point.t <= now + 1000);
-          const values = [];
 
-          for (const point of visible) {
-            for (const series of this.series) {
-              const value = point[series.key];
-              if (Number.isFinite(value)) values.push(value);
-            }
-          }
-
-          let minimum = Number.isFinite(this.fixedMin) ? this.fixedMin : 0;
-          let maximum = Number.isFinite(this.fixedMax) ? this.fixedMax : niceMaximum(values.length ? Math.max(...values) : 1);
-          if (maximum <= minimum) maximum = minimum + 1;
+          // Dual y-axes: the left axis carries the primary series, the right axis the rest.
+          const leftSeries = this.series.filter(series => series.axis !== "right");
+          const rightSeries = this.series.filter(series => series.axis === "right");
+          const leftScale = this.scaleFor(leftSeries, visible);
+          const rightScale = rightSeries.length ? this.scaleFor(rightSeries, visible) : null;
 
           context.clearRect(0, 0, width, height);
           context.save();
@@ -2213,15 +2210,19 @@
           for (let index = 0; index <= 4; index += 1) {
             const ratio = index / 4;
             const y = margin.top + plotHeight * ratio;
-            const value = maximum - (maximum - minimum) * ratio;
             context.beginPath();
             context.strokeStyle = COLORS.grid;
             context.moveTo(margin.left, Math.round(y) + 0.5);
-            context.lineTo(width - margin.right, Math.round(y) + 0.5);
+            context.lineTo(plotRight, Math.round(y) + 0.5);
             context.stroke();
-            context.fillStyle = COLORS.axis;
+            context.fillStyle = leftSeries[0].color;
             context.textAlign = "right";
-            context.fillText(this.axisFormatter(value), margin.left - 8, y);
+            context.fillText(this.axisFormatter(axisValue(leftScale, ratio)), margin.left - 8, y);
+            if (rightScale) {
+              context.fillStyle = rightSeries[0].color;
+              context.textAlign = "left";
+              context.fillText(this.axisFormatter(axisValue(rightScale, ratio)), plotRight + 8, y);
+            }
           }
 
           for (let index = 0; index <= 4; index += 1) {
@@ -2239,7 +2240,10 @@
           }
 
           const xForTime = timestamp => margin.left + ((timestamp - start) / HISTORY_WINDOW_MS) * plotWidth;
-          const yForValue = value => margin.top + (1 - (value - minimum) / (maximum - minimum)) * plotHeight;
+          const yForValue = (value, axis) => {
+            const scale = axis === "right" ? rightScale : leftScale;
+            return margin.top + (1 - (value - scale.minimum) / (scale.maximum - scale.minimum)) * plotHeight;
+          };
 
           context.save();
           context.beginPath();
@@ -2263,7 +2267,7 @@
                 continue;
               }
               const x = xForTime(point.t);
-              const y = yForValue(value);
+              const y = yForValue(value, series.axis);
               if (!drawing) {
                 context.moveTo(x, y);
                 drawing = true;
@@ -2284,7 +2288,7 @@
           }
           context.restore();
 
-          if (!values.length) {
+          if (!leftScale.hasData && !(rightScale && rightScale.hasData)) {
             context.fillStyle = COLORS.empty;
             context.font = `11px ${getComputedStyle(document.documentElement).getPropertyValue("--sans")}`;
             context.textAlign = "center";
@@ -2294,6 +2298,24 @@
 
           context.restore();
         }
+
+        scaleFor(seriesList, visible) {
+          let peak = null;
+          for (const point of visible) {
+            for (const series of seriesList) {
+              const value = point[series.key];
+              if (Number.isFinite(value) && (peak === null || value > peak)) peak = value;
+            }
+          }
+          const minimum = Number.isFinite(this.fixedMin) ? this.fixedMin : 0;
+          let maximum = Number.isFinite(this.fixedMax) ? this.fixedMax : niceMaximum(peak === null ? 1 : peak);
+          if (maximum <= minimum) maximum = minimum + 1;
+          return { minimum, maximum, hasData: peak !== null };
+        }
+      }
+
+      function axisValue(scale, ratio) {
+        return scale.maximum - (scale.maximum - scale.minimum) * ratio;
       }
 
       function niceMaximum(value) {
@@ -2309,31 +2331,31 @@
       const charts = [
         new TrendChart(document.getElementById("tokens-chart"), {
           series: [
-            { key: "generation", color: COLORS.cyan },
-            { key: "prompt", color: COLORS.blue }
+            { key: "generation", color: COLORS.cyan, axis: "left" },
+            { key: "prompt", color: COLORS.blue, axis: "right" }
           ],
           min: 0,
           axisFormatter: compactAxis
         }),
         new TrendChart(document.getElementById("requests-chart"), {
           series: [
-            { key: "running", color: COLORS.green },
-            { key: "waiting", color: COLORS.amber }
+            { key: "running", color: COLORS.green, axis: "left" },
+            { key: "waiting", color: COLORS.amber, axis: "right" }
           ],
           min: 0,
           axisFormatter: compactAxis
         }),
         new TrendChart(document.getElementById("cache-chart"), {
-          series: [{ key: "kv", color: COLORS.violet }],
+          series: [{ key: "kv", color: COLORS.violet, axis: "left" }],
           min: 0,
           max: 100,
           axisFormatter: value => `${formatNumber(value, 0)}%`
         }),
         new TrendChart(document.getElementById("latency-chart"), {
           series: [
-            { key: "e2e50", color: COLORS.green },
-            { key: "e2e90", color: COLORS.amber },
-            { key: "e2e99", color: COLORS.red }
+            { key: "e2e50", color: COLORS.green, axis: "left" },
+            { key: "e2e90", color: COLORS.amber, axis: "left" },
+            { key: "e2e99", color: COLORS.orange, axis: "right" }
           ],
           min: 0,
           axisFormatter: value => `${compactAxis(value)}ms`
