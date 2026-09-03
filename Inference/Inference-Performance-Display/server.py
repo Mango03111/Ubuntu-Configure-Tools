@@ -35,8 +35,11 @@ DEFAULT_LATENCY_WINDOW_SECONDS = 30.0
 DEFAULT_ENABLE_RAW_API = False
 DEFAULT_ENABLE_USAGE_STATS = True
 DEFAULT_USAGE_WRITE_INTERVAL_SECONDS = 60.0
-DEFAULT_USAGE_DATA_DIR = "usage_data/"
-DEFAULT_USAGE_PRICING_FILE = "pricing.yaml"
+# Resolve the usage data/pricing defaults relative to this script so the
+# server works no matter which directory it is started from.
+_BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_USAGE_DATA_DIR = _BASE_DIR / "usage_data"
+DEFAULT_USAGE_PRICING_FILE = _BASE_DIR / "pricing.yaml"
 
 
 _SAMPLE_NAME_RE = re.compile(r"[a-zA-Z_:][a-zA-Z0-9_:]*")
@@ -74,7 +77,8 @@ class Config:
         poll_seconds = poll_ms / 1000.0
         return cls(
             metrics_url=os.getenv(
-                "VLLM_METRICS_URL", DEFAULT_METRICS_URL
+                "INFERENCE_METRICS_URL",
+                os.getenv("VLLM_METRICS_URL", DEFAULT_METRICS_URL),  # legacy alias
             ),
             host=os.getenv("SERVER_HOST", DEFAULT_SERVER_HOST),
             port=_env_int("SERVER_PORT", DEFAULT_SERVER_PORT, minimum=1, maximum=65_535),
@@ -933,7 +937,7 @@ def make_handler(
     collector: MetricsCollector, index_path: Path
 ) -> type[BaseHTTPRequestHandler]:
     class DashboardHandler(BaseHTTPRequestHandler):
-        server_version = "vLLMPerformanceDisplay/1.0"
+        server_version = "InferencePerformanceDisplay/1.0"
 
         def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
             path = urllib.parse.urlsplit(self.path).path

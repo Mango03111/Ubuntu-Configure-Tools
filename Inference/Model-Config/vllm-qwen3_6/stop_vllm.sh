@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PID_FILE="/home/antl/vllm-qwen36-ct/logs/vllm_qwen36_ct_8k.pid"
+# 需与 start_qwen36_200k.sh 的 WORK_DIR 保持一致（可用环境变量覆盖）。
+WORK_DIR="${WORK_DIR:-/home/antl/vllm-qwen36-ct}"
+PID_FILE="$WORK_DIR/logs/vllm_qwen36_ct_8k.pid"
 SERVED_MODEL="qwen3.6-35b-a3b-ct4"
 
 stop_pid() {

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VENV_DIR="/home/antl/Desktop/vllm-env"
-MODEL_DIR="/home/antl/llmmodel/vllm/Qwen3.6-35B-A3B-AWQ-4bit"
-WORK_DIR="/home/antl/vllm-qwen36-ct"
+# 默认值可用环境变量覆盖，例如：
+#   VENV_DIR=/path/to/venv MODEL_DIR=/path/to/model ./start_qwen36_200k.sh
+VENV_DIR="${VENV_DIR:-/home/antl/Desktop/vllm-env}"
+MODEL_DIR="${MODEL_DIR:-/home/antl/llmmodel/vllm/Qwen3.6-35B-A3B-AWQ-4bit}"
+WORK_DIR="${WORK_DIR:-/home/antl/vllm-qwen36-ct}"
 LOG_DIR="$WORK_DIR/logs"
 LOG_FILE="$LOG_DIR/vllm_qwen36_ct_8k.log"
 PID_FILE="$LOG_DIR/vllm_qwen36_ct_8k.pid"
@@ -42,13 +44,14 @@ export NCCL_P2P_DISABLE=1
 
 nvidia-smi
 
+export VENV_DIR MODEL_DIR
 nohup bash -lc '
-source /home/antl/Desktop/vllm-env/bin/activate
+source "$VENV_DIR/bin/activate"
 export PYTHONUNBUFFERED=1
 export CUDA_VISIBLE_DEVICES=0,1
 export NCCL_IB_DISABLE=1
 export NCCL_P2P_DISABLE=1
-exec vllm serve "/home/antl/llmmodel/vllm/Qwen3.6-35B-A3B-AWQ-4bit" \
+exec vllm serve "$MODEL_DIR" \
   --served-model-name qwen3.6-35b-a3b-ct4 \
   --host 0.0.0.0 \
   --port 8000 \

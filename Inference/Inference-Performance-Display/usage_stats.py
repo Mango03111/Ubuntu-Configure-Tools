@@ -5,6 +5,7 @@ import csv
 import threading
 import time
 from collections import deque
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -51,15 +52,60 @@ class UsageStatsPlugin:
 
     def start(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
+        self._load_from_csv()
         self._stop.clear()
         self._thread = threading.Thread(target=self._run, name="usage-stats-writer", daemon=True)
         self._thread.start()
+
+    def _load_from_csv(self) -> None:
+        """Restore state from existing CSV files on startup.
+
+        Cumulative totals are summed over every historical row so the
+        displayed totals survive restarts, and the newest rows (up to the
+        history limit) refill the in-memory trend window.
+        """
+        limit = self._history.maxlen or 0
+        recent: list[dict[str, Any]] = []
+        for path in sorted(self.data_dir.glob("usage-*.csv")):
+            try:
+                with path.open("r", encoding="utf-8", newline="") as handle:
+                    rows = [row for row in csv.DictReader(handle) if row.get("period_end")]
+            except OSError:
+                continue
+            for row in rows:
+                for key in ("requests", "input_tokens", "output_tokens", "input_cost", "output_cost"):
+                    try:
+                        self._totals[key] += float(row.get(key) or 0.0)
+                    except ValueError:
+                        pass
+                recent.append(row)
+            if limit and len(recent) > limit:
+                del recent[: len(recent) - limit]
+        for row in recent:
+            try:
+                timestamp = datetime.strptime(row["period_end"], "%Y-%m-%dT%H:%M:%S%z").timestamp()
+            except (KeyError, TypeError, ValueError):
+                continue
+            entry: dict[str, Any] = dict(row)
+            for key in ("duration_seconds", "requests", "input_tokens", "output_tokens", "total_tokens", "input_price_per_1m_tokens", "output_price_per_1m_tokens", "input_cost", "output_cost", "total_cost"):
+                try:
+                    entry[key] = float(row.get(key) or 0.0)
+                except ValueError:
+                    entry[key] = 0.0
+            entry["timestamp"] = timestamp
+            self._history.append(entry)
+            if row.get("model"):
+                self._last_model = str(row["model"])
 
     def stop(self) -> None:
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=2)
-        self.flush()
+        # Skip the final flush when the data directory no longer exists
+        # (e.g. it was renamed while running) so shutdown never recreates
+        # a stale path.
+        if self.data_dir.exists():
+            self.flush()
 
     def _run(self) -> None:
         while not self._stop.wait(self.write_interval):
