@@ -1,4 +1,411 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>vLLM 用量统计</title><style>
-:root{--bg:#071019;--panel:#111f2d;--border:#294052;--text:#e7f0f7;--muted:#8da1b2;--cyan:#55c7f3;--green:#51d6a2}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,sans-serif}.dashboard{max-width:1680px;margin:auto;padding:20px}.topbar,.panel,.card{background:var(--panel);border:1px solid var(--border);border-radius:14px}.topbar{display:flex;justify-content:space-between;padding:16px 20px;margin-bottom:20px}.topbar h1{margin:0;font-size:22px}.topbar a{color:var(--cyan);margin-right:14px}.note,.label,.sub{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(6,minmax(150px,1fr));gap:12px}.card{padding:18px;min-width:0;overflow:hidden}.label{font-size:12px}.value{font:700 25px ui-monospace,monospace;margin-top:9px;white-space:nowrap}.model-value{display:block;width:100%;overflow:hidden;text-overflow:clip}.model-scroll{width:max-content;animation:model-marquee 12s linear infinite}@keyframes model-marquee{from{transform:translateX(var(--model-start,100%))}to{transform:translateX(var(--model-end,-100%))}}.section{margin-top:24px}.section h2{font-size:16px;margin:0 0 12px}.panel{padding:16px}.legend{display:flex;gap:18px;margin:10px 0;color:var(--muted);font-size:12px}.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}.chart{width:100%;height:320px}.error{color:#ff7180;margin-top:14px;white-space:pre-wrap}@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.topbar{align-items:flex-start;flex-direction:column}}
-</style></head><body><div class="dashboard"><header class="topbar"><div><h1>vLLM 用量统计</h1><div class="note">所有用户总量 · 分时段增量写入 CSV</div></div><nav><a href="/">性能展示</a><span id="status">连接中</span></nav></header><section><h2>累计使用量</h2><div class="grid"><div class="card"><div class="label">累计请求</div><div class="value" id="requests">--</div></div><div class="card"><div class="label">输入 tokens</div><div class="value" id="input">--</div></div><div class="card"><div class="label">输出 tokens</div><div class="value" id="output">--</div></div><div class="card"><div class="label">总 tokens</div><div class="value" id="total">--</div></div><div class="card"><div class="label">累计费用</div><div class="value" id="cost">--</div></div><div class="card"><div class="label">模型</div><div class="value model-value" id="model" title="--">--</div></div></div></section><section class="section"><h2>分时段用量趋势</h2><div class="panel"><div class="sub">纵轴：tokens / 写入周期　横轴：时间段</div><div class="legend"><span><i style="background:var(--cyan)"></i>输入 tokens</span><span><i style="background:var(--green)"></i>输出 tokens</span></div><canvas class="chart" id="chart">浏览器不支持 Canvas。</canvas></div></section><div class="error" id="error"></div></div><script>(()=>{const $=id=>document.getElementById(id),fmt=v=>Number.isFinite(Number(v))?new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2}).format(v):'--';let history=[],lastText=null,lastWidth=null;function updateModelScroll(){const e=$('model'),text=e.textContent||'',parentWidth=e.parentElement?e.parentElement.clientWidth:e.clientWidth;if(text===lastText&&parentWidth===lastWidth)return;lastText=text;lastWidth=parentWidth;e.classList.remove('model-scroll');e.style.removeProperty('--model-start');e.style.removeProperty('--model-end');e.style.width='100%';const overflow=e.scrollWidth-e.clientWidth;if(overflow>1){e.style.setProperty('--model-start',`${parentWidth}px`);e.style.setProperty('--model-end',`${-e.scrollWidth}px`);e.style.width='max-content';e.classList.add('model-scroll')}}function draw(){const c=$('chart'),r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);x.clearRect(0,0,r.width,r.height);const vals=history.flatMap(p=>[Number(p.input_tokens)||0,Number(p.output_tokens)||0]),max=Math.max(1,...vals),left=58,bottom=32,w=Math.max(1,r.width-left-16),h=Math.max(1,r.height-bottom-16);x.font='11px monospace';x.fillStyle='#8da1b2';x.strokeStyle='rgba(143,168,190,.18)';for(let i=0;i<5;i++){const y=12+h*i/4;x.beginPath();x.moveTo(left,y);x.lineTo(r.width-16,y);x.stroke();x.fillText(`${fmt(max*(1-i/4))} tok`,2,y+4)}x.fillText('时间段',r.width-52,r.height-6);[['input_tokens','#55c7f3'],['output_tokens','#51d6a2']].forEach(([key,color])=>{x.strokeStyle=color;x.lineWidth=2;x.beginPath();history.forEach((p,i)=>{const px=left+(history.length<2?.5:i/(history.length-1))*w,py=12+h*(1-(Number(p[key])||0)/max);i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke()})}async function poll(){try{const r=await fetch('/api/usage',{cache:'no-store'}),p=await r.json();if(!r.ok)throw Error(p.error||'统计功能不可用');const u=p.usage||{};$('requests').textContent=fmt(u.requests);$('input').textContent=fmt(u.input_tokens);$('output').textContent=fmt(u.output_tokens);$('total').textContent=fmt(u.total_tokens);$('cost').textContent=`${fmt(u.total_cost)} ${u.currency||''}`;$('model').textContent=u.model||'unknown';$('model').title=u.model||'unknown';updateModelScroll();history=(p.history||[]).slice(-120);$('status').textContent=p.ok?'在线':'异常';$('error').textContent=u.last_error||'';draw()}catch(e){$('status').textContent='异常';$('error').textContent=e.message}}window.addEventListener('resize',()=>{lastWidth=null;updateModelScroll();draw()});poll();setInterval(poll,2000)})();</script></body></html>
-<style>.model-value.model-scroll{animation-duration:6s}</style>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vLLM 用量统计</title>
+  <style>
+    :root {
+      --bg: #071019;
+      --panel: #111f2d;
+      --border: #294052;
+      --text: #e7f0f7;
+      --muted: #8da1b2;
+      --cyan: #55c7f3;
+      --green: #51d6a2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px system-ui, sans-serif;
+    }
+
+    .dashboard {
+      max-width: 1680px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .topbar,
+    .panel,
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .topbar a {
+      color: var(--cyan);
+      margin-right: 14px;
+    }
+
+    .note,
+    .label,
+    .sub {
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      padding: 18px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .label {
+      font-size: 12px;
+    }
+
+    .value {
+      font: 700 25px ui-monospace, monospace;
+      margin-top: 9px;
+      white-space: nowrap;
+    }
+
+    .model-value {
+      display: block;
+      width: 100%;
+      overflow: hidden;
+      text-overflow: clip;
+    }
+
+    .model-scroll {
+      width: max-content;
+      animation: model-marquee 12s linear infinite;
+    }
+
+    .model-value.model-scroll {
+      animation-duration: 6s;
+    }
+
+    @keyframes model-marquee {
+      from {
+        transform: translateX(var(--model-start, 100%));
+      }
+
+      to {
+        transform: translateX(var(--model-end, -100%));
+      }
+    }
+
+    .section {
+      margin-top: 24px;
+    }
+
+    .section h2 {
+      font-size: 16px;
+      margin: 0 0 12px;
+    }
+
+    .panel {
+      padding: 16px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 18px;
+      margin: 10px 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .chart {
+      width: 100%;
+      height: 320px;
+    }
+
+    .error {
+      color: #ff7180;
+      margin-top: 14px;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <header class="topbar">
+      <div>
+        <h1>vLLM 用量统计</h1>
+        <div class="note">所有用户总量 · 分时段增量写入 CSV</div>
+      </div>
+      <nav>
+        <a href="/">性能展示</a>
+        <span id="status">连接中</span>
+      </nav>
+    </header>
+
+    <section>
+      <h2>累计使用量</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="label">累计请求</div>
+          <div class="value" id="requests">--</div>
+        </div>
+        <div class="card">
+          <div class="label">输入 tokens</div>
+          <div class="value" id="input">--</div>
+        </div>
+        <div class="card">
+          <div class="label">输出 tokens</div>
+          <div class="value" id="output">--</div>
+        </div>
+        <div class="card">
+          <div class="label">总 tokens</div>
+          <div class="value" id="total">--</div>
+        </div>
+        <div class="card">
+          <div class="label">累计费用</div>
+          <div class="value" id="cost">--</div>
+        </div>
+        <div class="card">
+          <div class="label">模型</div>
+          <div class="value model-value" id="model" title="--">--</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>分时段用量趋势</h2>
+      <div class="panel">
+        <div class="sub">左轴：输入 tokens / 写入周期　右轴：输出 tokens / 写入周期　横轴：时间段</div>
+        <div class="legend">
+          <span><i style="background: var(--cyan)"></i>输入 tokens</span>
+          <span><i style="background: var(--green)"></i>输出 tokens</span>
+        </div>
+        <canvas class="chart" id="chart">浏览器不支持 Canvas。</canvas>
+      </div>
+    </section>
+
+    <div class="error" id="error"></div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const $ = id => document.getElementById(id);
+
+      const fmt = v =>
+        Number.isFinite(Number(v))
+          ? new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(v)
+          : "--";
+
+      const fmtTokens = v => {
+        v = Number(v);
+        if (!Number.isFinite(v)) return "--";
+        const a = Math.abs(v);
+        if (a >= 1e9) return (v / 1e9).toFixed(3) + " B";
+        if (a >= 1e6) return (v / 1e6).toFixed(3) + " M";
+        if (a >= 1e3) return (v / 1e3).toFixed(3) + " K";
+        return v.toFixed(3);
+      };
+
+      let history = [];
+      let lastText = null;
+      let lastWidth = null;
+
+      function updateModelScroll() {
+        const e = $("model");
+        const card = e.parentElement;
+        const text = e.textContent || "";
+        const parentWidth = card ? card.clientWidth : e.clientWidth;
+        if (text === lastText && parentWidth === lastWidth) return;
+        lastText = text;
+        lastWidth = parentWidth;
+        e.classList.remove("model-scroll");
+        e.style.removeProperty("--model-start");
+        e.style.removeProperty("--model-end");
+        e.style.width = "100%";
+        const overflow = e.scrollWidth - e.clientWidth;
+        if (overflow > 1 && card) {
+          // Measure while untransformed: element left edge relative to the card border box.
+          const leftOffset = e.getBoundingClientRect().left - card.getBoundingClientRect().left;
+          const visibleLeft = card.clientLeft;
+          const visibleRight = card.clientLeft + card.clientWidth;
+          // Start fully hidden on the right, end fully hidden on the left.
+          e.style.setProperty("--model-start", `${visibleRight - leftOffset}px`);
+          e.style.setProperty("--model-end", `${visibleLeft - leftOffset - e.scrollWidth}px`);
+          e.style.width = "max-content";
+          e.classList.add("model-scroll");
+        }
+      }
+
+      function draw() {
+        const c = $("chart");
+        const r = c.getBoundingClientRect();
+        const d = window.devicePixelRatio || 1;
+        c.width = r.width * d;
+        c.height = r.height * d;
+        const x = c.getContext("2d");
+        x.setTransform(d, 0, 0, d, 0, 0);
+        x.clearRect(0, 0, r.width, r.height);
+
+        // Dual y-axes: each side scales independently to its own series.
+        const maxIn = Math.max(1, ...history.map(p => Number(p.input_tokens) || 0));
+        const maxOut = Math.max(1, ...history.map(p => Number(p.output_tokens) || 0));
+        const WINDOW = 3600 * 1000;
+        const now = Date.now();
+        const start = now - WINDOW;
+        const tOf = p => {
+          const t = Number(p.timestamp);
+          return Number.isFinite(t) && t > 0 ? (t < 1e12 ? t * 1000 : t) : null;
+        };
+
+        x.font = "11px monospace";
+        x.fillStyle = "#8da1b2";
+        x.strokeStyle = "rgba(143, 168, 190, 0.18)";
+
+        // Side margins fit the widest label on each side, keeping the plot area maximal.
+        const edge = 2;
+        const labelGap = 8;
+        const leftLabels = [0, 1, 2, 3, 4].map(i => fmtTokens(maxIn * (1 - i / 4)));
+        const rightLabels = [0, 1, 2, 3, 4].map(i => fmtTokens(maxOut * (1 - i / 4)));
+        const left = edge + Math.max(...leftLabels.map(s => x.measureText(s).width)) + labelGap;
+        const right = edge + Math.max(...rightLabels.map(s => x.measureText(s).width)) + labelGap;
+        const bottom = 32;
+        const plotRight = r.width - right;
+        const w = Math.max(1, plotRight - left);
+        const h = Math.max(1, r.height - bottom - 16);
+        const xFor = t => left + ((t - start) / WINDOW) * w;
+
+        // Shared horizontal grid lines; left labels for input, right labels for output.
+        for (let i = 0; i < 5; i += 1) {
+          const y = 12 + (h * i) / 4;
+          x.beginPath();
+          x.moveTo(left, y);
+          x.lineTo(plotRight, y);
+          x.stroke();
+          x.fillText(leftLabels[i], edge, y + 4);
+          x.fillText(rightLabels[i], plotRight + labelGap, y + 4);
+        }
+
+        // Vertical time ticks aligned to real time; they scroll with the window.
+        const STEP = 600 * 1000;
+        x.textAlign = "center";
+        for (let t = Math.ceil(start / STEP) * STEP; t <= now; t += STEP) {
+          const px = xFor(t);
+          if (px < left || px > plotRight) continue;
+          x.beginPath();
+          x.moveTo(px, 12);
+          x.lineTo(px, 12 + h);
+          x.stroke();
+          const dt = new Date(t);
+          // Keep the label clear of the "now" marker pinned to the right edge.
+          if (px <= plotRight - 55) {
+            x.fillText(
+              `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
+              px,
+              r.height - 6
+            );
+          }
+        }
+
+        // "Now" marker pinned to the right edge of the axis.
+        x.textAlign = "right";
+        x.fillText("现在", plotRight, r.height - 6);
+        x.textAlign = "left";
+
+        // Data series, each scaled by its own axis maximum.
+        const series = [
+          ["input_tokens", "#55c7f3", maxIn],
+          ["output_tokens", "#51d6a2", maxOut]
+        ];
+        for (const [key, color, max] of series) {
+          x.strokeStyle = color;
+          x.lineWidth = 2;
+          x.beginPath();
+          let began = false;
+          for (const p of history) {
+            const t = tOf(p);
+            if (t === null || t < start || t > now) continue;
+            const px = xFor(t);
+            const py = 12 + h * (1 - (Number(p[key]) || 0) / max);
+            if (began) {
+              x.lineTo(px, py);
+            } else {
+              x.moveTo(px, py);
+              began = true;
+            }
+          }
+          x.stroke();
+        }
+      }
+
+      async function poll() {
+        try {
+          const r = await fetch("/api/usage", { cache: "no-store" });
+          const p = await r.json();
+          if (!r.ok) throw new Error(p.error || "统计功能不可用");
+          const u = p.usage || {};
+          $("requests").textContent = fmt(u.requests);
+          $("input").textContent = fmtTokens(u.input_tokens);
+          $("output").textContent = fmtTokens(u.output_tokens);
+          $("total").textContent = fmtTokens(u.total_tokens);
+          $("cost").textContent = `${fmt(u.total_cost)} ${u.currency || ""}`;
+          $("model").textContent = u.model || "unknown";
+          $("model").title = u.model || "unknown";
+          updateModelScroll();
+          history = (p.history || []).slice(-120);
+          $("status").textContent = p.ok ? "在线" : "异常";
+          $("error").textContent = u.last_error || "";
+          draw();
+        } catch (e) {
+          $("status").textContent = "异常";
+          $("error").textContent = e.message;
+        }
+      }
+
+      window.addEventListener("resize", () => {
+        lastWidth = null;
+        updateModelScroll();
+        draw();
+      });
+
+      poll();
+      setInterval(poll, 2000);
+    })();
+  </script>
+</body>
+</html>
