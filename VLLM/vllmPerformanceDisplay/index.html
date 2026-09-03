@@ -275,6 +275,11 @@
       background: rgba(216, 182, 120, 0.09);
     }
 
+    .toolbar a {
+      display: inline-flex;
+      align-items: center;
+    }
+
     .alert {
       display: grid;
       grid-template-columns: auto 1fr;
@@ -1495,7 +1500,6 @@
         <div class="brand-copy">
           <p class="eyebrow">Local telemetry</p>
           <h1>ANTLab Performance Console</h1>
-          <a href="/usage.html" style="color:var(--cyan);font-size:12px">用量统计</a>
         </div>
         <div class="connection-state" id="connection-state" data-state="connecting" role="status" aria-live="polite">
           <span class="status-dot" aria-hidden="true"></span>
@@ -1534,6 +1538,7 @@
         </label>
         <button class="toolbar-button" type="button" id="pause-button" aria-pressed="false">暂停图表</button>
         <button class="toolbar-button" type="button" id="clear-button">清空趋势</button>
+        <a class="toolbar-button" href="/usage.html">用量统计</a>
         <span class="paused-note" aria-live="polite">图表已暂停</span>
       </div>
     </header>
@@ -2059,10 +2064,10 @@
           setConnection("warning", "数据已陈旧");
           showAlert("指标数据已陈旧", snapshot.lastError || "当前展示的是最近一次成功采集的数据。页面会继续自动重试。");
         } else if (!snapshot.ok) {
-          setConnection("offline", "vLLM 离线");
-          showAlert("vLLM 指标不可用", snapshot.lastError || "后端暂时无法从 vLLM 获取指标。页面会继续自动重试。");
+          setConnection("offline", "离线");
+          showAlert("指标不可用", snapshot.lastError || "后端暂时无法获取指标。页面会继续自动重试。");
         } else {
-          setConnection("online", "vLLM 在线");
+          setConnection("online", "在线");
           hideAlert();
         }
 

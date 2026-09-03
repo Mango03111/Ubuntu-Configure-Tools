@@ -13,6 +13,8 @@
       --muted: #8da1b2;
       --cyan: #71bad6;
       --green: #67c19d;
+      --green-soft: rgba(103, 193, 157, 0.12);
+      --red: #ff7180;
     }
 
     * {
@@ -55,6 +57,58 @@
     .topbar a {
       color: var(--cyan);
       margin-right: 14px;
+    }
+
+    .connection-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      padding: 6px 11px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.025);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      box-shadow: 0 0 0 4px rgba(141, 161, 178, 0.08);
+    }
+
+    .connection-state[data-state="online"] {
+      color: var(--green);
+      border-color: rgba(103, 193, 157, 0.25);
+      background: var(--green-soft);
+    }
+
+    .connection-state[data-state="online"] .status-dot {
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(103, 193, 157, 0.1), 0 0 12px rgba(103, 193, 157, 0.55);
+    }
+
+    .connection-state[data-state="offline"] {
+      color: var(--red);
+      border-color: rgba(255, 113, 128, 0.28);
+      background: rgba(255, 113, 128, 0.11);
+    }
+
+    .connection-state[data-state="offline"] .status-dot {
+      background: var(--red);
+      box-shadow: 0 0 0 4px rgba(255, 113, 128, 0.1);
+    }
+
+    .connection-state[data-state="connecting"] .status-dot {
+      animation: status-pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes status-pulse {
+      50% { opacity: 0.35; transform: scale(0.76); }
     }
 
     .note,
@@ -146,7 +200,7 @@
     }
 
     .error {
-      color: #ff7180;
+      color: var(--red);
       margin-top: 14px;
       white-space: pre-wrap;
     }
@@ -172,7 +226,10 @@
       </div>
       <nav>
         <a href="/">性能展示</a>
-        <span id="status">连接中</span>
+        <div class="connection-state" id="status" data-state="connecting" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="status-label">连接中</span>
+        </div>
       </nav>
     </header>
 
@@ -373,6 +430,11 @@
         }
       }
 
+      function setStatus(stateName, label) {
+        $("status").dataset.state = stateName;
+        $("status-label").textContent = label;
+      }
+
       async function poll() {
         try {
           const r = await fetch("/api/usage", { cache: "no-store" });
@@ -388,11 +450,11 @@
           $("model").title = u.model || "unknown";
           updateModelScroll();
           history = (p.history || []).slice(-120);
-          $("status").textContent = p.ok ? "在线" : "异常";
+          setStatus(p.ok ? "online" : "offline", p.ok ? "在线" : "离线");
           $("error").textContent = u.last_error || "";
           draw();
         } catch (e) {
-          $("status").textContent = "异常";
+          setStatus("offline", "离线");
           $("error").textContent = e.message;
         }
       }
