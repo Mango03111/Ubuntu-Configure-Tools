@@ -178,6 +178,24 @@
       padding: 16px;
     }
 
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #trend-range {
+      flex: 0 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0d1a26;
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      padding: 5px 8px;
+    }
+
     .legend {
       display: flex;
       gap: 18px;
@@ -266,7 +284,14 @@
     <section class="section">
       <h2>分时段用量趋势</h2>
       <div class="panel">
-        <div class="sub">左轴：输入 tokens / 写入周期　右轴：输出 tokens / 写入周期　横轴：时间段</div>
+        <div class="panel-head">
+          <div class="sub" id="trend-sub">左轴：输入 tokens / 写入周期　右轴：输出 tokens / 写入周期　横轴：时间段</div>
+          <select id="trend-range" aria-label="趋势时间范围">
+            <option value="60" selected>近一小时</option>
+            <option value="720">近12小时</option>
+            <option value="1440">近24小时</option>
+          </select>
+        </div>
         <div class="legend">
           <span><i style="background: var(--cyan)"></i>输入 tokens</span>
           <span><i style="background: var(--green)"></i>输出 tokens</span>
@@ -300,8 +325,17 @@
       };
 
       let history = [];
+      let rangeMinutes = 60;
       let lastText = null;
       let lastWidth = null;
+
+      // Per-range display settings: long windows use a trailing moving average
+      // so compressed 1-minute noise reads as a smooth trend; 1h stays raw.
+      const RANGE_META = {
+        60: { smooth: 0, sub: "左轴：输入 tokens / 写入周期　右轴：输出 tokens / 写入周期　横轴：时间段" },
+        720: { smooth: 15, sub: "左轴：输入 tokens / 写入周期（15 分钟移动平均）　右轴：输出 tokens / 写入周期（15 分钟移动平均）　横轴：时间段" },
+        1440: { smooth: 30, sub: "左轴：输入 tokens / 写入周期（30 分钟移动平均）　右轴：输出 tokens / 写入周期（30 分钟移动平均）　横轴：时间段" },
+      };
 
       function updateModelScroll() {
         const e = $("model");
@@ -340,15 +374,39 @@
         x.clearRect(0, 0, r.width, r.height);
 
         // Dual y-axes: each side scales independently to its own series.
-        const maxIn = Math.max(1, ...history.map(p => Number(p.input_tokens) || 0));
-        const maxOut = Math.max(1, ...history.map(p => Number(p.output_tokens) || 0));
-        const WINDOW = 3600 * 1000;
+        const WINDOW = rangeMinutes * 60 * 1000;
         const now = Date.now();
         const start = now - WINDOW;
         const tOf = p => {
           const t = Number(p.timestamp);
           return Number.isFinite(t) && t > 0 ? (t < 1e12 ? t * 1000 : t) : null;
         };
+        // Axis maxima follow the visible window, not the full history.
+        let points = history
+          .map(p => ({ t: tOf(p), input: Number(p.input_tokens) || 0, output: Number(p.output_tokens) || 0 }))
+          .filter(p => p.t !== null && p.t >= start && p.t <= now);
+        // Long-range views use a trailing moving average so the compressed
+        // 1-minute noise reads as a smooth trend; the 1-hour view stays raw.
+        const smoothMinutes = (RANGE_META[rangeMinutes] || RANGE_META[60]).smooth;
+        if (smoothMinutes > 1 && points.length > 1) {
+          const winMs = smoothMinutes * 60 * 1000;
+          let j = 0, sumIn = 0, sumOut = 0;
+          const smoothed = [];
+          for (let i = 0; i < points.length; i++) {
+            sumIn += points[i].input;
+            sumOut += points[i].output;
+            while (points[j].t < points[i].t - winMs) {
+              sumIn -= points[j].input;
+              sumOut -= points[j].output;
+              j++;
+            }
+            const n = i - j + 1;
+            smoothed.push({ t: points[i].t, input: sumIn / n, output: sumOut / n });
+          }
+          points = smoothed;
+        }
+        const maxIn = Math.max(1, ...points.map(p => p.input));
+        const maxOut = Math.max(1, ...points.map(p => p.output));
 
         x.font = "11px monospace";
         x.fillStyle = "#8da1b2";
@@ -379,7 +437,7 @@
         }
 
         // Vertical time ticks aligned to real time; they scroll with the window.
-        const STEP = 600 * 1000;
+        const STEP = WINDOW / 6;
         x.textAlign = "center";
         for (let t = Math.ceil(start / STEP) * STEP; t <= now; t += STEP) {
           const px = xFor(t);
@@ -406,19 +464,17 @@
 
         // Data series, each scaled by its own axis maximum.
         const series = [
-          ["input_tokens", "#71bad6", maxIn],
-          ["output_tokens", "#67c19d", maxOut]
+          ["input", "#71bad6", maxIn],
+          ["output", "#67c19d", maxOut]
         ];
         for (const [key, color, max] of series) {
           x.strokeStyle = color;
           x.lineWidth = 2;
           x.beginPath();
           let began = false;
-          for (const p of history) {
-            const t = tOf(p);
-            if (t === null || t < start || t > now) continue;
-            const px = xFor(t);
-            const py = 12 + h * (1 - (Number(p[key]) || 0) / max);
+          for (const p of points) {
+            const px = xFor(p.t);
+            const py = 12 + h * (1 - p[key] / max);
             if (began) {
               x.lineTo(px, py);
             } else {
@@ -449,7 +505,7 @@
           $("model").textContent = u.model || "unknown";
           $("model").title = u.model || "unknown";
           updateModelScroll();
-          history = (p.history || []).slice(-120);
+          history = p.history || [];
           setStatus(p.ok ? "online" : "offline", p.ok ? "在线" : "离线");
           $("error").textContent = u.last_error || "";
           draw();
@@ -462,6 +518,12 @@
       window.addEventListener("resize", () => {
         lastWidth = null;
         updateModelScroll();
+        draw();
+      });
+
+      $("trend-range").addEventListener("change", e => {
+        rangeMinutes = Number(e.target.value) || 60;
+        $("trend-sub").textContent = RANGE_META[rangeMinutes].sub;
         draw();
       });
 
