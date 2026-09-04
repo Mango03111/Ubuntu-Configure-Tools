@@ -1000,6 +1000,9 @@ def make_handler(
                     return
                 self._send_bytes(body, "text/html; charset=utf-8", cache_control="no-cache")
                 return
+            if path.startswith("/images/"):
+                self._send_image(path)
+                return
             if path == "/favicon.ico":
                 self.send_response(204)
                 self.end_headers()
@@ -1040,6 +1043,26 @@ def make_handler(
             )
             self.end_headers()
             self.wfile.write(body)
+
+        def _send_image(self, path: str) -> None:
+            images_dir = index_path.with_name("images").resolve()
+            target = (images_dir / path[len("/images/"):]).resolve()
+            if not target.is_relative_to(images_dir) or not target.is_file():
+                self._send_json({"ok": False, "error": "not found"}, status=404)
+                return
+            content_type = {
+                ".png": "image/png",
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".svg": "image/svg+xml",
+                ".gif": "image/gif",
+                ".webp": "image/webp",
+            }.get(target.suffix.lower(), "application/octet-stream")
+            self._send_bytes(
+                target.read_bytes(),
+                content_type,
+                cache_control="public, max-age=3600",
+            )
 
         def log_message(self, format_string: str, *args: object) -> None:
             sys.stderr.write(

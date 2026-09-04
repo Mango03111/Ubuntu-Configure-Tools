@@ -1,4 +1,8 @@
-# Inference Performance Display
+<p align="center">
+  <img src="images/display-logo.png" alt="Inference Performance Display" width="480">
+</p>
+
+<h1 align="center">Inference Performance Display</h1>
 
 一个无第三方依赖、可拓展的推理性能监测看板。后端使用 Python 标准库定时
 读取推理服务的 Prometheus 指标，前端使用单文件 HTML/CSS/JavaScript 展示

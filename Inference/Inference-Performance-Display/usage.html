@@ -54,6 +54,21 @@
       font-size: 22px;
     }
 
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .topbar-logo {
+      flex: 0 0 auto;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      object-fit: cover;
+    }
+
     .topbar a {
       color: var(--cyan);
       margin-right: 14px;
@@ -238,9 +253,12 @@
 <body>
   <div class="dashboard">
     <header class="topbar">
-      <div>
-        <h1>ANTLab 用量统计</h1>
-        <div class="note">所有用户总量 · 分时段增量写入 CSV</div>
+      <div class="topbar-brand">
+        <img class="topbar-logo" src="/images/logo.png" alt="" aria-hidden="true">
+        <div>
+          <h1>ANTLab 用量统计</h1>
+          <div class="note">所有用户总量 · 分时段增量写入 CSV</div>
+        </div>
       </div>
       <nav>
         <a href="/">性能展示</a>
