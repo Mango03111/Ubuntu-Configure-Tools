@@ -1617,14 +1617,15 @@
             <div class="panel-header">
               <div>
                 <h3 class="panel-title">KV cache pressure</h3>
-                <div class="panel-subtitle">缓存使用率（%）</div>
+                <div class="panel-subtitle">左轴 缓存使用率 · 右轴 前缀命中率（%）</div>
               </div>
               <div class="legend" aria-hidden="true">
                 <span class="legend-item"><i class="legend-dot" style="--series-color: var(--violet)"></i>Usage</span>
+                <span class="legend-item"><i class="legend-dot" style="--series-color: var(--green)"></i>Prefix hit</span>
               </div>
             </div>
             <div class="chart-wrap">
-              <canvas id="cache-chart" role="img" aria-label="最近 60 秒 KV 缓存使用率趋势">浏览器不支持 Canvas。</canvas>
+              <canvas id="cache-chart" role="img" aria-label="最近 60 秒 KV 缓存使用率与前缀命中率趋势">浏览器不支持 Canvas。</canvas>
             </div>
           </article>
 
@@ -2084,6 +2085,7 @@
           running: hasFreshData ? snapshot.running : null,
           waiting: hasFreshData ? snapshot.waiting : null,
           kv: hasFreshData ? percentValue(snapshot.kvCache) : null,
+          prefixHitRate: hasFreshData ? percentValue(snapshot.prefixHit) : null,
           e2e50: hasFreshData && Number.isFinite(snapshot.latency.e2e_p50) ? snapshot.latency.e2e_p50 * 1000 : null,
           e2e90: hasFreshData && Number.isFinite(snapshot.latency.e2e_p90) ? snapshot.latency.e2e_p90 * 1000 : null,
           e2e99: hasFreshData && Number.isFinite(snapshot.latency.e2e_p99) ? snapshot.latency.e2e_p99 * 1000 : null
@@ -2310,7 +2312,10 @@
           axisFormatter: compactAxis
         }),
         new TrendChart(document.getElementById("cache-chart"), {
-          series: [{ key: "kv", color: COLORS.violet, axis: "left" }],
+          series: [
+            { key: "kv", color: COLORS.violet, axis: "left" },
+            { key: "prefixHitRate", color: COLORS.green, axis: "right" }
+          ],
           min: 0,
           max: 100,
           axisFormatter: value => `${formatNumber(value, 0)}%`
