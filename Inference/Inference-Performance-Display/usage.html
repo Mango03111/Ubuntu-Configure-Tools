@@ -426,15 +426,20 @@
         const xFor = t => left + ((t - start) / WINDOW) * w;
 
         // Shared horizontal grid lines; left labels for input, right labels for output.
+        // Tick labels are tinted with their series color so each axis is
+        // identifiable at a glance.
         for (let i = 0; i < 5; i += 1) {
           const y = 12 + (h * i) / 4;
           x.beginPath();
           x.moveTo(left, y);
           x.lineTo(plotRight, y);
           x.stroke();
+          x.fillStyle = "#71bad6";
           x.fillText(leftLabels[i], edge, y + 4);
+          x.fillStyle = "#67c19d";
           x.fillText(rightLabels[i], plotRight + labelGap, y + 4);
         }
+        x.fillStyle = "#8da1b2";
 
         // Vertical time ticks aligned to real time; they scroll with the window.
         const STEP = WINDOW / 6;
